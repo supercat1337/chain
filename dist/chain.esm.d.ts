@@ -1,4 +1,9 @@
 export type Task = (previousResult: any, chain: Engine) => any;
+export type Details = {
+    task_id: number;
+    error: Error | null;
+    chain: Chain;
+};
 export class Chain {
     /** @type {Task[]} */
     tasks: Task[];
@@ -60,6 +65,7 @@ export class Chain {
     };
     #private;
 }
+/** @typedef {{task_id: number, error: Error|null, chain: Chain}} Details */
 declare class Engine {
     /**
      * Creates an engine instance
