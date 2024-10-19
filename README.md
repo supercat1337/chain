@@ -119,6 +119,7 @@ The `Engine` class is a utility class that manages the state and execution of ta
 * **`complete(value)`**: Completes the running chain with the given value, if it is currently running.
 * **`raiseError(error)`**: Raises an error for the running chain, if it is currently running.
 * **`sleep(ms)`**: Sleeps for the given amount of milliseconds. If the engine is cancelled during the sleep, the promise is resolved immediately.
+* **`fetch(url, options)`**: Wraps the global `fetch` function and adds the abort signal to the given options. If the engine is cancelled during the fetch, the promise is resolved immediately.
 
 ### Usage
 
@@ -191,6 +192,40 @@ task 0
 task 1
 cancel
 result =  null
+*/
+```
+
+### Example of fetching data with the `Engine` class
+
+Here is an example of fetching data with the `Engine` class and aborting the request:
+
+```javascript
+import { Chain } from "@supercat1337/chain";
+
+    const chain = new Chain();
+    let foo = 0;
+
+    chain.on("cancel", () => {
+        t.log("cancel");
+    });
+
+    chain
+        .add(async (previousResult, engine) => {
+            let res = engine.fetch("https://example.com");
+
+            res.catch(e => {
+                foo++;
+            });
+
+            engine.abortController.abort();
+            return await res;
+        });
+
+    await chain.run();
+    console.log("foo = ", foo);
+
+/* Output:
+foo =  1
 */
 ```
 

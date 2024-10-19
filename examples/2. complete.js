@@ -2,10 +2,6 @@
 
 import { Chain } from "../src/index.js";
 
-function sleep(ms) {
-    return new Promise(resolve => setTimeout(resolve, ms));
-}
-
 const chain = new Chain();
 
 chain.on("complete", () => {

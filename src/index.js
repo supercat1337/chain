@@ -13,6 +13,8 @@ function sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
 
+/** @typedef {{task_id: number, error: Error|null, chain: Chain}} Details */
+
 class Engine {
 
     abortController = new AbortController;
@@ -191,6 +193,15 @@ export class Chain {
         return this;
     }
 
+    /**
+     * 
+     * @param {"complete"|"cancel"|"error"|"run"} event
+     * @param {Details} details
+     * 
+     */
+    #emit(event, details) {
+        this.#eventEmitter.emit(event, details);
+    }
 
     /**
      * Runs the chain, if it is not already running
@@ -224,8 +235,10 @@ export class Chain {
         this.returnValue = null;
         this.#ctx = ctx;
 
-        this.#eventEmitter.emit("run", {
-            chain: this
+        this.#emit("run", {
+            chain: this, 
+            task_id: -1,
+            error: null,
         });
 
         var i = 0;
@@ -248,7 +261,7 @@ export class Chain {
                     this.isRunning = false;
                     this.completedSuccessfully = true;
 
-                    this.#eventEmitter.emit("complete", {
+                    this.#emit("complete", {
                         chain: this,
                         error: null,
                         task_id: i,
@@ -261,7 +274,7 @@ export class Chain {
                     this.isRunning = false;
                     this.completedSuccessfully = false;
 
-                    this.#eventEmitter.emit("cancel", {
+                    this.#emit("cancel", {
                         chain: this,
                         error: null,
                         task_id: i,
@@ -275,7 +288,7 @@ export class Chain {
                     this.completedSuccessfully = false;
                     this.returnValue = null;
 
-                    this.#eventEmitter.emit("error", {
+                    this.#emit("error", {
                         chain: this,
                         error: e,
                         task_id: i,
@@ -294,7 +307,7 @@ export class Chain {
         this.completedSuccessfully = true;
         this.returnValue = previousResult;
 
-        this.#eventEmitter.emit("complete", {
+        this.#emit("complete", {
             chain: this,
             error: null,
             task_id: i - 1,
