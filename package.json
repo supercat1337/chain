@@ -1,6 +1,6 @@
 {
   "name": "@supercat1337/chain",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Chain",
   "main": "index.js",
   "scripts": {
