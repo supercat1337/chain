@@ -36,8 +36,8 @@ chain.on("cancel", () => {
     console.log("cancel");
 });
 
-chain.on("error", (e) => {
-    console.log("error", e);
+chain.on("error", (details) => {
+    console.log("error", details.error);
 });
 
 chain.on("run", () => {
@@ -90,17 +90,22 @@ The `Chain` class provides methods for adding tasks, running the chain, and mana
 * **`on(event, listener)`**: Adds an event listener to the chain for a specific event.
 * **`add(task)`**: Adds a task to the end of the chain.
 * **`run(ctx)`**: Runs the chain, executing each task in sequence, and returns a promise that resolves with the result of the last task if the chain completes successfully.
-* **`waitUntilComplete()`**: Waits until the chain is no longer running and returns a promise that resolves immediately if the chain is not running.
+* **`waitForChainToFinish()`**: Waits until the chain is no longer running and returns a promise that resolves immediately if the chain is not running.
 * **`cancel()`**: Cancels the running chain, if it is currently running.
 * **`getCtx()`**: Returns the context object associated with the chain.
 
 ### Events
 
-* **`complete`**: Fired when the chain completes successfully.
-* **`cancel`**: Fired when the chain is cancelled.
-* **`error`**: Fired when an error occurs during execution.
-* **`run`**: Fired when the chain is started running.
+* **`complete(details)`**: Fired when the chain completes successfully.
+* **`cancel(details)`**: Fired when the chain is cancelled.
+* **`error(details)`**: Fired when an error occurs during execution.
+* **`run(details)`**: Fired when the chain is started running.
 
+Details are provided in listener functions. The `details` object has the following properties:
+
+* **`chain`**: The task chain being managed by the engine.
+* **`taskIndex`**: The index of the task in the chain.
+* **`error`**: The error raised by the task, if any.
 
 ## Chain management by using the `Engine` class
 
@@ -164,7 +169,7 @@ import { Chain } from "@supercat1337/chain";
 
 const chain = new Chain();
 
-chain.on("cancel", () => {
+chain.on("cancel", (details) => {
     console.log("cancel");
 });
 
@@ -230,7 +235,6 @@ foo =  1
 ```
 
 Also see the [examples](./examples) directory for more examples.
-
 
 ## License
 

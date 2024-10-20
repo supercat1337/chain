@@ -14,7 +14,7 @@ function sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-/** @typedef {{task_id: number, error: Error|null, chain: Chain}} Details */
+/** @typedef {{taskIndex: number, error: Error|null, chain: Chain}} Details */
 
 class Engine {
 
@@ -110,7 +110,7 @@ Methods
 on(event, listener): Adds an event listener to the chain for a specific event (e.g. "complete", "cancel", "error", "run").
 add(task): Adds a task to the end of the chain.
 run(ctx): Runs the chain, executing each task in sequence, and returns a promise that resolves with the result of the last task if the chain completes successfully.
-waitUntilComplete(): Waits until the chain is no longer running and returns a promise that resolves immediately if the chain is not running.
+waitForChainToFinish(): Waits until the chain is no longer running and returns a promise that resolves immediately if the chain is not running.
 cancel(): Cancels the running chain, if it is currently running.
 getCtx(): Returns the context object associated with the chain.
 Note that the Chain class uses an internal Engine instance to manage its state and execute tasks. The Engine instance is not exposed publicly.
@@ -177,8 +177,8 @@ class Chain {
     /**
      * Adds an event listener to the chain
      * @param {"complete"|"cancel"|"error"|"run"} event
-     * @param {(event:any)=>any} listener
-     * @returns {Function} unsubscribe function
+     * @param {(details:Details)=>void} listener
+     * @returns {()=>void} unsubscribe function
      */
     on(event, listener) {
         return this.#eventEmitter.on(event, listener);
@@ -238,7 +238,7 @@ class Chain {
 
         this.#emit("run", {
             chain: this, 
-            task_id: -1,
+            taskIndex: -1,
             error: null,
         });
 
@@ -265,7 +265,7 @@ class Chain {
                     this.#emit("complete", {
                         chain: this,
                         error: null,
-                        task_id: i,
+                        taskIndex: i,
                     });
 
                     return this.returnValue;
@@ -278,7 +278,7 @@ class Chain {
                     this.#emit("cancel", {
                         chain: this,
                         error: null,
-                        task_id: i,
+                        taskIndex: i,
                     });
 
                     return null;
@@ -292,7 +292,7 @@ class Chain {
                     this.#emit("error", {
                         chain: this,
                         error: e,
-                        task_id: i,
+                        taskIndex: i,
                     });
 
                     return null;
@@ -311,7 +311,7 @@ class Chain {
         this.#emit("complete", {
             chain: this,
             error: null,
-            task_id: i - 1,
+            taskIndex: i - 1,
         });
 
         return previousResult;
@@ -321,7 +321,7 @@ class Chain {
      * Waits until the chain is not running anymore. If the chain is not running, the function returns immediately.
      * @returns {Promise<void>}
      */
-    async waitUntilComplete() {
+    async waitForChainToFinish() {
         while (this.isRunning) {
             await sleep(100);
         }
@@ -329,13 +329,15 @@ class Chain {
 
     /**
      * Cancels the running chain, if it is running
-     * @returns {void}
+     * @returns {Promise<void>}
      * @throws {Error} with message "Cancel", if the chain is not running
      */
-    cancel() {
+    async cancel() {
         if (this.isRunning) {
-            this.#engine.abortController.abort();
+            this.#engine.abortController.abort("Cancel");
         }
+
+        await this.waitForChainToFinish();
     }
 
     /**

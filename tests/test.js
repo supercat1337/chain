@@ -176,7 +176,7 @@ test("engine.sleep, chain.cancel", async (t) => {
     chain.cancel();
 });
 
-test("chain.waitUntilComplete", async (t) => {
+test("chain.waitForChainToFinish", async (t) => {
     const chain = new Chain();
     let result = 0;
     chain
@@ -197,7 +197,7 @@ test("chain.waitUntilComplete", async (t) => {
         });
 
     chain.run();
-    await chain.waitUntilComplete();
+    await chain.waitForChainToFinish();
 
     if (result == 3) {
         t.pass();
@@ -250,7 +250,7 @@ test("chain.run (while chain is already running)", async (t) => {
         return t.pass();
     });
 
-    await chain.waitUntilComplete();
+    await chain.waitForChainToFinish();
 });
 
 test("engine.abortController", async (t) => {

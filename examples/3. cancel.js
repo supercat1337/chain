@@ -12,8 +12,8 @@ chain.on("cancel", () => {
     console.log("cancel");
 });
 
-chain.on("error", (e) => {
-    console.log("error", e);
+chain.on("error", (details) => {
+    console.log("error", details.error);
 });
 
 chain.on("run", () => {

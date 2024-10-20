@@ -2,10 +2,6 @@
 
 import { Chain } from "../src/index.js";
 
-function sleep(ms) {
-    return new Promise(resolve => setTimeout(resolve, ms));
-}
-
 const chain = new Chain();
 
 chain.on("complete", () => {
@@ -17,7 +13,7 @@ chain.on("cancel", () => {
 });
 
 chain.on("error", (details) => {
-    console.log("error", details.error.message);
+    console.log("error", details.error?.message);
 });
 
 chain.on("run", () => {

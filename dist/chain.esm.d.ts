@@ -1,6 +1,6 @@
 export type Task = (previousResult: any, chain: Engine) => any;
 export type Details = {
-    task_id: number;
+    taskIndex: number;
     error: Error | null;
     chain: Chain;
 };
@@ -16,10 +16,10 @@ export class Chain {
     /**
      * Adds an event listener to the chain
      * @param {"complete"|"cancel"|"error"|"run"} event
-     * @param {(event:any)=>any} listener
-     * @returns {Function} unsubscribe function
+     * @param {(details:Details)=>void} listener
+     * @returns {()=>void} unsubscribe function
      */
-    on(event: "complete" | "cancel" | "error" | "run", listener: (event: any) => any): Function;
+    on(event: "complete" | "cancel" | "error" | "run", listener: (details: Details) => void): () => void;
     /**
      * Adds a task to the chain
      * @param {Task} task
@@ -49,13 +49,13 @@ export class Chain {
      * Waits until the chain is not running anymore. If the chain is not running, the function returns immediately.
      * @returns {Promise<void>}
      */
-    waitUntilComplete(): Promise<void>;
+    waitForChainToFinish(): Promise<void>;
     /**
      * Cancels the running chain, if it is running
-     * @returns {void}
+     * @returns {Promise<void>}
      * @throws {Error} with message "Cancel", if the chain is not running
      */
-    cancel(): void;
+    cancel(): Promise<void>;
     /**
      * Returns the context of the chain
      * @returns {{[key:string]:any}}
@@ -65,7 +65,7 @@ export class Chain {
     };
     #private;
 }
-/** @typedef {{task_id: number, error: Error|null, chain: Chain}} Details */
+/** @typedef {{taskIndex: number, error: Error|null, chain: Chain}} Details */
 declare class Engine {
     /**
      * Creates an engine instance

@@ -16,7 +16,7 @@ chain.on("error", (e) => {
     console.log("error", e);
 });
 
-chain.on("run", () => {
+chain.on("run", (details) => {
     console.log("run");
 });
 
