@@ -126,6 +126,7 @@ The `Engine` class is a utility class that manages the state and execution of ta
 * **`sleep(ms)`**: Sleeps for the given amount of milliseconds. If the engine is cancelled during the sleep, the promise is resolved immediately.
 * **`fetch(url, options)`**: Wraps the global `fetch` function and adds the abort signal to the given options. If the engine is cancelled during the fetch, the promise is resolved immediately.
 * **`wrap(fn)`**: Wraps a function to ensure it respects the Engine's abort signal. If the engine is cancelled during the execution of the function, the promise is rejected with an "Cancel" error.
+* **`checkAbortSignal()`**: Checks if the abort signal is aborted and cancels the running chain if needed.
 
 ### Usage
 

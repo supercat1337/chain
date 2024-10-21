@@ -75,6 +75,11 @@ declare class Engine {
     abortController: AbortController;
     chain: Chain;
     /**
+     * Checks if the abort signal is aborted and cancels the running chain if needed.
+     * @returns {void}
+     */
+    checkAbortSignal(): void;
+    /**
      * Cancels the running chain, if it is running
      * @returns {void}
      * @throws {Error} with message "Cancel", if the chain is not running

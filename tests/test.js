@@ -233,6 +233,12 @@ test("chain.getCtx", async (t) => {
 
 test("chain.run (while chain is already running)", async (t) => {
     const chain = new Chain();
+    let foo = 0;
+
+    chain.on("error", (e) => {
+        foo++;
+    });
+
     chain
         .add(async (previousResult, engine) => {
             await engine.sleep(1000);
@@ -244,13 +250,16 @@ test("chain.run (while chain is already running)", async (t) => {
         });
 
     chain.run();
-
-    chain.run().catch(e => {
-        console.log(e);
-        return t.pass();
-    });
+    chain.run();
 
     await chain.waitForChainToFinish();
+
+    if (foo == 1) {
+        t.pass();
+    }
+    else {
+        t.fail();
+    }
 });
 
 test("engine.abortController", async (t) => {
@@ -340,6 +349,84 @@ test("engine.wrap", async (t) => {
     chain.run();
     await sleep(1000);
     await chain.cancel();
+
+    if (foo == 0) {
+        t.pass();
+    }
+    else {
+        t.fail();
+    }
+});
+
+test("abort() before fetch", async (t) => {
+
+    let foo = 0;
+
+    const chain = new Chain();
+
+    chain.add(async (v, engine) => {
+        engine.abortController.abort();
+        await engine.fetch("https://example.com");
+        foo++;
+    });
+
+    chain.add(async () => {
+        foo++;
+    });
+
+    await chain.run();
+
+    if (foo == 0) {
+        t.pass();
+    }
+    else {
+        t.fail();
+    }
+});
+
+test("abort() before wrap", async (t) => {
+
+    let foo = 0;
+
+    const chain = new Chain();
+
+    chain.add(async (v, engine) => {
+        engine.abortController.abort();
+        await engine.wrap(sleep)(1000);
+        foo++;
+    });
+
+    chain.add(async () => {
+        foo++;
+    });
+
+    await chain.run();
+
+    if (foo == 0) {
+        t.pass();
+    }
+    else {
+        t.fail();
+    }
+});
+
+test("abort() before sleep", async (t) => {
+
+    let foo = 0;
+
+    const chain = new Chain();
+
+    chain.add(async (v, engine) => {
+        engine.abortController.abort();
+        await engine.sleep(1000);
+        foo++;
+    });
+
+    chain.add(async () => {
+        foo++;
+    });
+
+    await chain.run();
 
     if (foo == 0) {
         t.pass();

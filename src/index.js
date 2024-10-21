@@ -27,6 +27,16 @@ class Engine {
         this.chain = chain;
     }
 
+/**
+ * Checks if the abort signal is aborted and cancels the running chain if needed.
+ * @returns {void}
+ */
+    checkAbortSignal() {
+        if (this.abortController.signal.aborted) {
+            this.cancel();
+        }
+    }
+
     /**
      * Cancels the running chain, if it is running
      * @returns {void}
@@ -46,6 +56,8 @@ class Engine {
      * @throws {Error} with message "Complete", if the chain is not running
      */
     complete(return_value) {
+        this.checkAbortSignal();
+
         this.chain.returnValue = return_value;
         this.abortController.abort();
 
@@ -59,6 +71,8 @@ class Engine {
      * @throws {Error} the given error
      */
     raiseError(error) {
+        this.checkAbortSignal();
+
         this.chain.returnValue = null;
         this.abortController.abort();
         throw error;
@@ -70,6 +84,7 @@ class Engine {
      * @returns {Promise<void>}
      */
     sleep(ms) {
+        this.checkAbortSignal();
 
         return new Promise((resolve, reject) => {
 
@@ -95,6 +110,8 @@ class Engine {
      * @returns {Promise<Response>}
      */
     fetch(url, options) {
+        this.checkAbortSignal();
+
         return fetch(url, Object.assign({}, options, { signal: this.abortController.signal }));
     }
 
@@ -106,6 +123,8 @@ class Engine {
  * @returns {T} A new function that returns a promise, which resolves or rejects based on the original function's outcome or the abort signal.
  */
     wrap(fn) {
+        this.checkAbortSignal();
+
         const that = this;
         const func = function (...params) {
             return new Promise((resolve, reject) => {
@@ -257,7 +276,14 @@ export class Chain {
         ctx = ctx || {};
 
         if (this.isRunning) {
-            throw new Error("Already running");
+            
+            this.#emit("error", {
+                chain: this,
+                error: new Error("Already running"),
+                taskIndex: -1,
+            });
+
+            return null;
         }
 
         this.#engine = new Engine(this);
@@ -279,11 +305,7 @@ export class Chain {
         while (this.tasks[i]) {
 
             try {
-
-                if (this.#engine.abortController.signal.aborted) {
-                    this.#engine.cancel();
-                    return;
-                }
+                this.#engine.checkAbortSignal();
 
                 previousResult = await this.tasks[i](previousResult, this.#engine);
             }
