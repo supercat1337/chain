@@ -125,6 +125,7 @@ The `Engine` class is a utility class that manages the state and execution of ta
 * **`raiseError(error)`**: Raises an error for the running chain, if it is currently running.
 * **`sleep(ms)`**: Sleeps for the given amount of milliseconds. If the engine is cancelled during the sleep, the promise is resolved immediately.
 * **`fetch(url, options)`**: Wraps the global `fetch` function and adds the abort signal to the given options. If the engine is cancelled during the fetch, the promise is resolved immediately.
+* **`wrap(fn)`**: Wraps a function to ensure it respects the Engine's abort signal. If the engine is cancelled during the execution of the function, the promise is rejected with an "Cancel" error.
 
 ### Usage
 
@@ -233,6 +234,47 @@ import { Chain } from "@supercat1337/chain";
 foo =  1
 */
 ```
+
+### Example of wrapping a function with the `Engine` class
+
+Here is an example of wrapping a function with the `Engine` class:
+
+```javascript
+import { Chain } from "@supercat1337/chain";
+
+function sleep(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+// sample async function
+async function test() {
+    await sleep(5000);
+    console.log("test");
+}
+
+const chain = new Chain();
+
+
+chain.add(async (v, engine) => {
+    let fn = engine.wrap(test);
+    await fn();
+});
+
+chain.add(async () => {
+    console.log("Never executed");
+});
+
+console.log("Start");
+chain.run();
+await sleep(1000);
+await chain.cancel();
+console.log("End");
+
+/* Output:
+Start
+End
+test
+*/
 
 Also see the [examples](./examples) directory for more examples.
 

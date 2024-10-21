@@ -107,6 +107,14 @@ declare class Engine {
      */
     fetch(url: string, options?: RequestInit): Promise<Response>;
     /**
+     * Wraps a function to ensure it respects the Engine's abort signal.
+     * If the engine is cancelled during the execution of the function, the promise is rejected with an "Cancel" error.
+     * @template {(...params:any[]) => Promise<any>} T
+     * @param {T} fn - The function to wrap.
+     * @returns {T} A new function that returns a promise, which resolves or rejects based on the original function's outcome or the abort signal.
+     */
+    wrap<T extends (...params: any[]) => Promise<any>>(fn: T): T;
+    /**
      * Returns the context of the chain
      * @returns {{[key:string]:any}}
      */

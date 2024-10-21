@@ -318,3 +318,33 @@ test("engine.fetch", async (t) => {
     }
 
 });
+
+test("engine.wrap", async (t) => {
+    async function test() {
+        await sleep(5000);
+    }
+
+    let foo = 0;
+
+    const chain = new Chain();
+
+    chain.add(async (v, engine) => {
+        let fn = engine.wrap(test);
+        await fn();
+    });
+
+    chain.add(async () => {
+        foo++;
+    });
+
+    chain.run();
+    await sleep(1000);
+    await chain.cancel();
+
+    if (foo == 0) {
+        t.pass();
+    }
+    else {
+        t.fail();
+    }
+});

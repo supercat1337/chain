@@ -70,14 +70,20 @@ class Engine {
      * @returns {Promise<void>}
      */
     sleep(ms) {
+
         return new Promise((resolve, reject) => {
 
-            let timeout_id = setTimeout(resolve, ms);
-
-            this.abortController.signal.addEventListener("abort", () => {
+            const callback = () => {
                 clearTimeout(timeout_id);
                 reject(new Error("Cancel"));
-            });
+            };
+
+            let timeout_id = setTimeout(() => {
+                this.abortController.signal.removeEventListener("abort", callback);
+                resolve();
+            }, ms);
+
+            this.abortController.signal.addEventListener("abort", callback);
         });
     }
 
@@ -90,6 +96,34 @@ class Engine {
      */
     fetch(url, options) {
         return fetch(url, Object.assign({}, options, { signal: this.abortController.signal }));
+    }
+
+/**
+ * Wraps a function to ensure it respects the Engine's abort signal.
+ * If the engine is cancelled during the execution of the function, the promise is rejected with an "Cancel" error.
+ * @template {(...params:any[]) => Promise<any>} T
+ * @param {T} fn - The function to wrap.
+ * @returns {T} A new function that returns a promise, which resolves or rejects based on the original function's outcome or the abort signal.
+ */
+    wrap(fn) {
+        const that = this;
+        const func = function (...params) {
+            return new Promise((resolve, reject) => {
+                const callback = () => {
+                    reject(new Error("Cancel"));
+                }
+
+                that.abortController.signal.addEventListener("abort", callback);
+
+                fn(...params).then((res)=>{
+                    that.abortController.signal.removeEventListener("abort", callback);
+                    resolve(res);
+                }).catch(reject);
+
+            });
+        };
+
+        return /** @type {T} */ (func);
     }
 
     /**
@@ -236,7 +270,7 @@ export class Chain {
         this.#ctx = ctx;
 
         this.#emit("run", {
-            chain: this, 
+            chain: this,
             taskIndex: -1,
             error: null,
         });
