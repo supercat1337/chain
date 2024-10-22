@@ -2,10 +2,11 @@
 
 import { Chain } from "./../../src/index.js";
 
-const chain = new Chain();
-const ctx = {
-    value: ""
-};
+/** @type {Map<string, string>} */
+const ctx = new Map();
+
+/** @type {Chain<string, typeof ctx>} */
+const chain = new Chain(ctx);
 
 const input_element = /** @type {HTMLInputElement} */ (document.querySelector("#input"));
 const output_element = /** @type {HTMLDivElement} */ (document.querySelector("#output"));
@@ -26,40 +27,53 @@ chain.on("complete", () => {
 chain.on("error", (details) => {
     status_element.textContent = "";
     output_element.textContent = "";
-    error_element.textContent = String(details.error?.message);
+    error_element.textContent = String(details.error?.message || "");
 });
 
 chain
-    .add(async (previousResult, engine) => {
+    .add(async (previousResult, chainController) => {
         let value = input_element.value;
 
         if (value === "") {
-            //engine.raiseError(new Error("Empty input"));
-            throw new Error("Empty input 123");
+            throw new Error("Empty input");
         }
 
         if (!/^\d+$/.test(value)) {
-            engine.raiseError(new Error("Not a number"));
+            throw new Error("Not a number");
         }
 
-        if (value == engine.ctx.value) {
-            engine.cancel();
+        await chainController.sleep(2000);
+
+        return value;
+    })
+    .add(async (value, chainController) => {
+
+        /*
+        if (chainController.ctx.hasOwnProperty(value)) {
+            chainController.complete(chainController.ctx[value]);
+        }
+        */
+
+        if (chainController.ctx.has(value)) {
+            chainController.complete(chainController.ctx.get(value));
         }
 
         return value;
     })
-    .add(async (value, engine) => {
-        await engine.sleep(2000);
+    .add(async (value, chainController) => {
 
         status_element.textContent = "Loading...";
         output_element.textContent = "";
 
-        let response = await engine.fetch("https://jsonplaceholder.org/comments?id=" + value );
+        let response = await chainController.fetch("https://jsonplaceholder.org/comments?id=" + value );
+        // same as
+        //let response = await fetch("https://jsonplaceholder.org/comments?id=" + value, {signal: chainController.abortController.signal} );
+        
         let text = await response.text();
+        //chainController.ctx[value] = text;
+        chainController.ctx.set(value, text);
 
-        engine.ctx.value = value;
-
-        return text;
+        chainController.complete(text);
     });
 
 input_element.addEventListener("keyup", async (event) => {

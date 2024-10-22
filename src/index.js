@@ -2,7 +2,10 @@
 
 import { EventEmitter } from "@supercat1337/event-emitter";
 
-/** @typedef {(previousResult:any, chain:Engine)=>any} Task */
+/** 
+ * @template {any} U
+ * @template {{[key:string]:any}} T 
+ * @typedef {(previousResult:any, chainController:ChainController<U,T>)=>any} Task */
 
 /**
  * Sleeps for the given amount of milliseconds.
@@ -13,24 +16,32 @@ function sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-/** @typedef {{taskIndex: number, error: Error|null, chain: Chain}} Details */
+/**
+ * @template {any} U
+ * @template {{[key:string]:any}} T 
+ * @typedef {{lastTaskIndex: number, error: Error|null, chain: Chain<U,T>}} Details 
+ * */
 
-class Engine {
+/**
+ * @template {any} U
+ * @template {{[key:string]:any}} T
+ */
+class ChainController {
 
     abortController = new AbortController;
 
     /**
-     * Creates an engine instance
-     * @param {Chain} chain
+     * Creates an chainController instance
+     * @param {Chain<U,T>} chain
      */
     constructor(chain) {
         this.chain = chain;
     }
 
-/**
- * Checks if the abort signal is aborted and cancels the running chain if needed.
- * @returns {void}
- */
+    /**
+     * Checks if the abort signal is aborted and cancels the running chain if needed.
+     * @returns {void}
+     */
     checkAbortSignal() {
         if (this.abortController.signal.aborted) {
             this.cancel();
@@ -43,43 +54,24 @@ class Engine {
      * @throws {Error} with message "Cancel", if the chain is not running
      */
     cancel() {
-        this.chain.returnValue = null;
-        this.abortController.abort();
-
         let error = new Error("Cancel");
         throw error;
     }
 
     /**
      * Completes the running chain, if it is running
-     * @param {*} [return_value] value to return as result of the chain
+     * @param {U} [return_value] value to return as result of the chain
      * @throws {Error} with message "Complete", if the chain is not running
      */
     complete(return_value) {
         this.checkAbortSignal();
 
-        this.chain.returnValue = return_value;
-        this.abortController.abort();
-
-        let error = new Error("Complete");
+        let error = new Error("Complete", { cause: return_value });
         throw error;
     }
 
     /**
-     * Raises an error for the running chain, if it is running
-     * @param {Error} error
-     * @throws {Error} the given error
-     */
-    raiseError(error) {
-        this.checkAbortSignal();
-
-        this.chain.returnValue = null;
-        this.abortController.abort();
-        throw error;
-    }
-
-    /**
-     * Sleeps for the given amount of milliseconds. If the engine is cancelled during the sleep, the promise is resolved immediately.
+     * Sleeps for the given amount of milliseconds. If the chainController is cancelled during the sleep, the promise is resolved immediately.
      * @param {number} ms
      * @returns {Promise<void>}
      */
@@ -104,7 +96,7 @@ class Engine {
 
     /**
      * Wraps the global fetch function and adds the abort signal to the given options.
-     * If the engine is cancelled during the fetch, the promise is resolved immediately.
+     * If the chainController is cancelled during the fetch, the promise is resolved immediately.
      * @param {string} url
      * @param {RequestInit} [options]
      * @returns {Promise<Response>}
@@ -115,13 +107,13 @@ class Engine {
         return fetch(url, Object.assign({}, options, { signal: this.abortController.signal }));
     }
 
-/**
- * Wraps a function to ensure it respects the Engine's abort signal.
- * If the engine is cancelled during the execution of the function, the promise is rejected with an "Cancel" error.
- * @template {(...params:any[]) => Promise<any>} T
- * @param {T} fn - The function to wrap.
- * @returns {T} A new function that returns a promise, which resolves or rejects based on the original function's outcome or the abort signal.
- */
+    /**
+     * Wraps a function to ensure it respects the ChainController's abort signal.
+     * If the chainController is cancelled during the execution of the function, the promise is rejected with an "Cancel" error.
+     * @template {(...params:any[]) => Promise<any>} Q
+     * @param {Q} fn - The function to wrap.
+     * @returns {Q} A new function that returns a promise, which resolves or rejects based on the original function's outcome or the abort signal.
+     */
     wrap(fn) {
         this.checkAbortSignal();
 
@@ -134,7 +126,7 @@ class Engine {
 
                 that.abortController.signal.addEventListener("abort", callback);
 
-                fn(...params).then((res)=>{
+                fn(...params).then((res) => {
                     that.abortController.signal.removeEventListener("abort", callback);
                     resolve(res);
                 }).catch(reject);
@@ -142,94 +134,59 @@ class Engine {
             });
         };
 
-        return /** @type {T} */ (func);
+        return /** @type {Q} */ (func);
     }
 
     /**
      * Returns the context of the chain
-     * @returns {{[key:string]:any}}
+     * @returns {T}
      */
     get ctx() {
-        return this.chain.getCtx();
+        return this.chain.ctx;
     }
 }
 
-/*
-Class Overview The Chain class represents a sequence of tasks that can be executed in a specific order. It provides methods for adding tasks, running the chain, and managing its state.
-
-Methods
-
-on(event, listener): Adds an event listener to the chain for a specific event (e.g. "complete", "cancel", "error", "run").
-add(task): Adds a task to the end of the chain.
-run(ctx): Runs the chain, executing each task in sequence, and returns a promise that resolves with the result of the last task if the chain completes successfully.
-waitForChainToFinish(): Waits until the chain is no longer running and returns a promise that resolves immediately if the chain is not running.
-cancel(): Cancels the running chain, if it is currently running.
-getCtx(): Returns the context object associated with the chain.
-Note that the Chain class uses an internal Engine instance to manage its state and execute tasks. The Engine instance is not exposed publicly.
-
-The Engine instance is available as a parameter of the task functions. 
-You can use this instance to cancel the chain, complete the chain, or raise an error for the chain.
-
-Example #1
-```js
-const chain = new Chain();
-chain
-    .add((previousResult, engine) => {
-        return 1;
-    })
-    .add((previousResult, engine) => {
-        console.log(previousResult == 1); // Output: true
-        return 2;
-    });
-
-await chain.run();
-```
-
-Example #2
-```js
-const chain = new Chain();
-chain
-    .add((previousResult, engine) => {
-        return 1;
-    })
-    .add((previousResult, engine) => {
-        console.log(previousResult == 1); // Output: true
-        if (previousResult == 1) {
-            engine.cancel();
-        }
-        return 2;
-    });
-
-await chain.run(); // Output: null
-```
-*/
-
+/**
+ * @template {any} U return value
+ * @template {{[key:string]:any}} T type of context
+ */
 export class Chain {
 
     /** @type {EventEmitter<"complete"|"cancel"|"error"|"run">} */
     #eventEmitter = new EventEmitter();
 
-    /** @type {Task[]} */
+    /** @type {Task<U,T>[]} */
     tasks = [];
 
-    /** @type {any}  */
-    returnValue;
+    /** @type {null|U}  */
+    #returnValue;
 
     /** @type {boolean} */
-    completedSuccessfully = false;
+    #completedSuccessfully = false;
 
     /** @type {boolean} */
-    isRunning = false;
+    #isRunning = false;
 
-    #ctx = {}
+    /** @type {T} */
+    #ctx = /** @type {T} */ ({});
 
-    /** @type {Engine} */
-    #engine = new Engine(this);
+    /** @type {ChainController<U,T>} */
+    #chainController = new ChainController(this);
+
+    /**
+     * 
+     * @param {T} [ctx] 
+     */
+    constructor(ctx) {
+        if (ctx) {
+            this.#ctx = ctx;
+        }
+     }
 
     /**
      * Adds an event listener to the chain
      * @param {"complete"|"cancel"|"error"|"run"} event
-     * @param {(details:Details)=>void} listener
+     * @param {(details:Details<U,T>)=>void} listener
      * @returns {()=>void} unsubscribe function
      */
     on(event, listener) {
@@ -238,8 +195,8 @@ export class Chain {
 
     /**
      * Adds a task to the chain
-     * @param {Task} task
-     * @returns {Chain} this
+     * @param {Task<U,T>} task
+     * @returns {Chain<U,T>} this
      */
     add(task) {
         this.tasks.push(task);
@@ -249,7 +206,7 @@ export class Chain {
     /**
      * 
      * @param {"complete"|"cancel"|"error"|"run"} event
-     * @param {Details} details
+     * @param {Details<U,T>} details
      * 
      */
     #emit(event, details) {
@@ -258,8 +215,8 @@ export class Chain {
 
     /**
      * Runs the chain, if it is not already running
-     * @param {{[key:string]:any}} [ctx] context object, passed to each task
-     * @returns {Promise<any>} the result of the last task, if the chain completed successfully
+     * @param {T} [ctx] context object, passed to each task. If not provided, the context object of the last task will be used.
+     * @returns {Promise<U|null>} the result of the last task, if the chain completed successfully
      * @throws {Error} with message "Already running", if the chain is already running
      * @throws {Error} with message "Cancel", if the chain is cancelled during the run
      * @throws {Error} with message "Complete", if the chain is completed during the run
@@ -273,103 +230,115 @@ export class Chain {
      * @listens Chain#run
      */
     async run(ctx) {
-        ctx = ctx || {};
 
-        if (this.isRunning) {
-            
+        if (this.#isRunning) {
+
             this.#emit("error", {
                 chain: this,
                 error: new Error("Already running"),
-                taskIndex: -1,
+                lastTaskIndex: -1,
             });
 
             return null;
         }
 
-        this.#engine = new Engine(this);
+        this.#chainController = new ChainController(this);
 
-        this.isRunning = true;
+        this.#isRunning = true;
         var previousResult = undefined;
 
-        this.completedSuccessfully = false;
-        this.returnValue = null;
-        this.#ctx = ctx;
+        this.#completedSuccessfully = false;
+        this.#returnValue = null;
+
+        if (ctx) {
+            this.#ctx = ctx;
+        }
 
         this.#emit("run", {
             chain: this,
-            taskIndex: -1,
+            lastTaskIndex: -1,
             error: null,
         });
 
-        var i = 0;
-        while (this.tasks[i]) {
 
-            try {
-                this.#engine.checkAbortSignal();
+        var i = -1;
 
-                previousResult = await this.tasks[i](previousResult, this.#engine);
+        if (this.tasks.length > 0) {
+            i = 0;
+
+            while (this.tasks[i]) {
+
+                try {
+                    this.#chainController.checkAbortSignal();
+                    previousResult = await this.tasks[i](previousResult, this.#chainController);
+                }
+                catch (e) {
+                    if (!this.#chainController.abortController.signal.aborted) {
+                        this.#chainController.abortController.abort();
+                    }
+            
+                    this.#isRunning = false;
+
+                    if (e.message == "Complete") {
+
+                        this.#completedSuccessfully = true;
+                        this.#returnValue = e.cause;
+
+                        this.#emit("complete", {
+                            chain: this,
+                            error: null,
+                            lastTaskIndex: i,
+                        });
+                    }
+                    else if (e.message == "Cancel") {
+
+                        this.#completedSuccessfully = false;
+                        this.#returnValue = null;
+
+                        this.#emit("cancel", {
+                            chain: this,
+                            error: null,
+                            lastTaskIndex: i,
+                        });
+                    }
+                    else {
+
+                        this.#completedSuccessfully = false;
+                        this.#returnValue = null;
+
+                        this.#emit("error", {
+                            chain: this,
+                            error: e,
+                            lastTaskIndex: i,
+                        });
+                    }
+
+                    return this.#returnValue;
+                }
+
+                if (i + 1 >= this.tasks.length) {
+                    break;
+                }
+
+                i++;
             }
-            catch (e) {
-                this.isRunning = false;
-
-                if (e.message == "Complete") {
-
-                    this.isRunning = false;
-                    this.completedSuccessfully = true;
-
-                    this.#emit("complete", {
-                        chain: this,
-                        error: null,
-                        taskIndex: i,
-                    });
-
-                    return this.returnValue;
-                }
-                else if (e.message == "Cancel") {
-
-                    this.isRunning = false;
-                    this.completedSuccessfully = false;
-
-                    this.#emit("cancel", {
-                        chain: this,
-                        error: null,
-                        taskIndex: i,
-                    });
-
-                    return null;
-                }
-                else {
-
-                    this.isRunning = false;
-                    this.completedSuccessfully = false;
-                    this.returnValue = null;
-
-                    this.#emit("error", {
-                        chain: this,
-                        error: e,
-                        taskIndex: i,
-                    });
-
-                    return null;
-
-                }
-
-            }
-
-            i++;
         }
 
-        this.isRunning = false;
-        this.completedSuccessfully = true;
-        this.returnValue = previousResult;
+        if (!this.#chainController.abortController.signal.aborted) {
+            this.#chainController.abortController.abort();
+        }
+
+        this.#isRunning = false;
+        this.#completedSuccessfully = true;
+        this.#returnValue = previousResult;
 
         this.#emit("complete", {
             chain: this,
             error: null,
-            taskIndex: i - 1,
+            lastTaskIndex: i,
         });
 
-        return previousResult;
+        return this.#returnValue;
     }
 
     /**
@@ -377,7 +346,7 @@ export class Chain {
      * @returns {Promise<void>}
      */
     async waitForChainToFinish() {
-        while (this.isRunning) {
+        while (this.#isRunning) {
             await sleep(100);
         }
     }
@@ -388,8 +357,8 @@ export class Chain {
      * @throws {Error} with message "Cancel", if the chain is not running
      */
     async cancel() {
-        if (this.isRunning) {
-            this.#engine.abortController.abort("Cancel");
+        if (this.#isRunning) {
+            this.#chainController.abortController.abort("Cancel");
         }
 
         await this.waitForChainToFinish();
@@ -397,9 +366,32 @@ export class Chain {
 
     /**
      * Returns the context of the chain
-     * @returns {{[key:string]:any}}
+     * @returns {T}
      */
-    getCtx() {
+    get ctx() {
         return this.#ctx;
+    }
+
+    /**
+     * The return value of the last task in the chain, if the chain has completed successfully
+     * @type {U|null}
+     */
+    get returnValue() {
+        return this.#returnValue;
+    }
+
+    /**
+     * Indicates whether the chain has completed successfully.
+     */
+    get completedSuccessfully() {
+        return this.#completedSuccessfully;
+    }
+
+    /**
+     * Whether the chain is currently running
+     * @type {boolean}
+     */
+    get isRunning() {
+        return this.#isRunning;
     }
 }

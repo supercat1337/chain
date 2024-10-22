@@ -1,6 +1,6 @@
 {
   "name": "@supercat1337/chain",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "description": "Chain is a library for creating and executing tasks in a specific order. It provides methods for adding tasks, running the chain, and managing its state.",
   "main": "index.js",
   "scripts": {

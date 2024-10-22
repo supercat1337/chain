@@ -1,35 +1,44 @@
-export type Task = (previousResult: any, chain: Engine) => any;
-export type Details = {
-    taskIndex: number;
+export type Task<U extends unknown, T extends {
+    [key: string]: any;
+}> = (previousResult: any, chainController: ChainController<U, T>) => any;
+export type Details<U extends unknown, T extends {
+    [key: string]: any;
+}> = {
+    lastTaskIndex: number;
     error: Error | null;
-    chain: Chain;
+    chain: Chain<U, T>;
 };
-export class Chain {
-    /** @type {Task[]} */
-    tasks: Task[];
-    /** @type {any}  */
-    returnValue: any;
-    /** @type {boolean} */
-    completedSuccessfully: boolean;
-    /** @type {boolean} */
-    isRunning: boolean;
+/**
+ * @template {any} U return value
+ * @template {{[key:string]:any}} T type of context
+ */
+export class Chain<U extends unknown, T extends {
+    [key: string]: any;
+}> {
+    /**
+     *
+     * @param {T} [ctx]
+     */
+    constructor(ctx?: T);
+    /** @type {Task<U,T>[]} */
+    tasks: Task<U, T>[];
     /**
      * Adds an event listener to the chain
      * @param {"complete"|"cancel"|"error"|"run"} event
-     * @param {(details:Details)=>void} listener
+     * @param {(details:Details<U,T>)=>void} listener
      * @returns {()=>void} unsubscribe function
      */
-    on(event: "complete" | "cancel" | "error" | "run", listener: (details: Details) => void): () => void;
+    on(event: "complete" | "cancel" | "error" | "run", listener: (details: Details<U, T>) => void): () => void;
     /**
      * Adds a task to the chain
-     * @param {Task} task
-     * @returns {Chain} this
+     * @param {Task<U,T>} task
+     * @returns {Chain<U,T>} this
      */
-    add(task: Task): Chain;
+    add(task: Task<U, T>): Chain<U, T>;
     /**
      * Runs the chain, if it is not already running
-     * @param {{[key:string]:any}} [ctx] context object, passed to each task
-     * @returns {Promise<any>} the result of the last task, if the chain completed successfully
+     * @param {T} [ctx] context object, passed to each task. If not provided, the context object of the last task will be used.
+     * @returns {Promise<U|null>} the result of the last task, if the chain completed successfully
      * @throws {Error} with message "Already running", if the chain is already running
      * @throws {Error} with message "Cancel", if the chain is cancelled during the run
      * @throws {Error} with message "Complete", if the chain is completed during the run
@@ -42,9 +51,7 @@ export class Chain {
      * @listens Chain#error
      * @listens Chain#run
      */
-    run(ctx?: {
-        [key: string]: any;
-    }): Promise<any>;
+    run(ctx?: T): Promise<U | null>;
     /**
      * Waits until the chain is not running anymore. If the chain is not running, the function returns immediately.
      * @returns {Promise<void>}
@@ -58,22 +65,44 @@ export class Chain {
     cancel(): Promise<void>;
     /**
      * Returns the context of the chain
-     * @returns {{[key:string]:any}}
+     * @returns {T}
      */
-    getCtx(): {
-        [key: string]: any;
-    };
+    get ctx(): T;
+    /**
+     * The return value of the last task in the chain, if the chain has completed successfully
+     * @type {U|null}
+     */
+    get returnValue(): U;
+    /**
+     * Indicates whether the chain has completed successfully.
+     */
+    get completedSuccessfully(): boolean;
+    /**
+     * Whether the chain is currently running
+     * @type {boolean}
+     */
+    get isRunning(): boolean;
     #private;
 }
-/** @typedef {{taskIndex: number, error: Error|null, chain: Chain}} Details */
-declare class Engine {
+/**
+ * @template {any} U
+ * @template {{[key:string]:any}} T
+ * @typedef {{lastTaskIndex: number, error: Error|null, chain: Chain<U,T>}} Details
+ * */
+/**
+ * @template {any} U
+ * @template {{[key:string]:any}} T
+ */
+declare class ChainController<U extends unknown, T extends {
+    [key: string]: any;
+}> {
     /**
-     * Creates an engine instance
-     * @param {Chain} chain
+     * Creates an chainController instance
+     * @param {Chain<U,T>} chain
      */
-    constructor(chain: Chain);
+    constructor(chain: Chain<U, T>);
     abortController: AbortController;
-    chain: Chain;
+    chain: Chain<U, T>;
     /**
      * Checks if the abort signal is aborted and cancels the running chain if needed.
      * @returns {void}
@@ -87,45 +116,37 @@ declare class Engine {
     cancel(): void;
     /**
      * Completes the running chain, if it is running
-     * @param {*} [return_value] value to return as result of the chain
+     * @param {U} [return_value] value to return as result of the chain
      * @throws {Error} with message "Complete", if the chain is not running
      */
-    complete(return_value?: any): void;
+    complete(return_value?: U): void;
     /**
-     * Raises an error for the running chain, if it is running
-     * @param {Error} error
-     * @throws {Error} the given error
-     */
-    raiseError(error: Error): void;
-    /**
-     * Sleeps for the given amount of milliseconds. If the engine is cancelled during the sleep, the promise is resolved immediately.
+     * Sleeps for the given amount of milliseconds. If the chainController is cancelled during the sleep, the promise is resolved immediately.
      * @param {number} ms
      * @returns {Promise<void>}
      */
     sleep(ms: number): Promise<void>;
     /**
      * Wraps the global fetch function and adds the abort signal to the given options.
-     * If the engine is cancelled during the fetch, the promise is resolved immediately.
+     * If the chainController is cancelled during the fetch, the promise is resolved immediately.
      * @param {string} url
      * @param {RequestInit} [options]
      * @returns {Promise<Response>}
      */
     fetch(url: string, options?: RequestInit): Promise<Response>;
     /**
-     * Wraps a function to ensure it respects the Engine's abort signal.
-     * If the engine is cancelled during the execution of the function, the promise is rejected with an "Cancel" error.
-     * @template {(...params:any[]) => Promise<any>} T
-     * @param {T} fn - The function to wrap.
-     * @returns {T} A new function that returns a promise, which resolves or rejects based on the original function's outcome or the abort signal.
+     * Wraps a function to ensure it respects the ChainController's abort signal.
+     * If the chainController is cancelled during the execution of the function, the promise is rejected with an "Cancel" error.
+     * @template {(...params:any[]) => Promise<any>} Q
+     * @param {Q} fn - The function to wrap.
+     * @returns {Q} A new function that returns a promise, which resolves or rejects based on the original function's outcome or the abort signal.
      */
-    wrap<T extends (...params: any[]) => Promise<any>>(fn: T): T;
+    wrap<Q extends (...params: any[]) => Promise<any>>(fn: Q): Q;
     /**
      * Returns the context of the chain
-     * @returns {{[key:string]:any}}
+     * @returns {T}
      */
-    get ctx(): {
-        [key: string]: any;
-    };
+    get ctx(): T;
 }
 export {};
 //# sourceMappingURL=chain.esm.d.ts.map

@@ -21,17 +21,17 @@ chain.on("run", () => {
 });
 
 chain
-    .add(async (previousResult, engine) => {
+    .add(async (previousResult, chainController) => {
         console.log("task 0");
         return 0;
     })
-    .add(async (previousResult, engine) => {
+    .add(async (previousResult, chainController) => {
         console.log("task 1");
         console.log("previousResult = ", previousResult);
         throw new Error("custom error");
         return 1;
     })
-    .add(async (previousResult, engine) => {
+    .add(async (previousResult, chainController) => {
         console.log("task 2");
         return 2;
     });

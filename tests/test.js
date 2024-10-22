@@ -24,26 +24,27 @@ function promiseState(p) {
         .then(v => (v === t) ? "pending" : "fulfilled", () => "rejected");
 }
 
-test("base", async (t) => {
+test("base example", async (t) => {
+    /** @type {Chain<number>} */
     const chain = new Chain();
 
     chain
-        .add(async (previousResult, engine) => {
+        .add(async (previousResult, chainController) => {
             console.log("task 0");
             return 0;
         })
-        .add(async (previousResult, engine) => {
+        .add(async (previousResult, chainController) => {
             console.log("task 1");
             console.log("previousResult = ", previousResult);
             return 1;
         })
-        .add(async (previousResult, engine) => {
+        .add(async (previousResult, chainController) => {
             console.log("task 2");
             return 2;
         });
 
     let result = await chain.run();
-    if (result == 2) {
+    if (result == 2 && chain.returnValue == 2 && chain.completedSuccessfully && chain.isRunning == false) {
         t.pass();
     }
     else {
@@ -51,18 +52,21 @@ test("base", async (t) => {
     }
 });
 
-test("engine.complete", async (t) => {
+test("chainController.complete", async (t) => {
+    /**
+     * @type {Chain<number>}
+     */
     const chain = new Chain();
 
     chain
-        .add(async (previousResult, engine) => {
+        .add(async (previousResult, chainController) => {
             return 0;
         })
-        .add(async (previousResult, engine) => {
-            engine.complete(100);
+        .add(async (previousResult, chainController) => {
+            chainController.complete(100);
             return 1;
         })
-        .add(async (previousResult, engine) => {
+        .add(async (previousResult, chainController) => {
             return 2;
         });
 
@@ -76,23 +80,23 @@ test("engine.complete", async (t) => {
 }
 );
 
-test("engine.cancel", async (t) => {
+test("chainController.cancel", async (t) => {
 
     const chain = new Chain();
     let foo = 0;
 
     chain
-        .add((previousResult, engine) => {
+        .add((previousResult, chainController) => {
             foo++;
             return 0;
         })
-        .add((previousResult, engine) => {
+        .add((previousResult, chainController) => {
             foo++;
 
-            engine.cancel();
+            chainController.cancel();
             return 1;
         })
-        .add((previousResult, engine) => {
+        .add((previousResult, chainController) => {
             foo++;
             return 2;
         });
@@ -107,41 +111,8 @@ test("engine.cancel", async (t) => {
 
 });
 
-test("engine.raiseError", async (t) => {
-    const chain = new Chain();
-    let foo = 0;
-    let bar = 0;
-
-    chain.on("error", (e) => {
-        bar++;
-    });
-
-    chain
-        .add((previousResult, engine) => {
-            foo++;
-            return 0;
-        })
-        .add((previousResult, engine) => {
-            engine.raiseError(new Error("custom error"));
-            foo++;
-            return 1;
-        })
-        .add((previousResult, engine) => {
-            foo++;
-            return 2;
-        });
-
-    await chain.run();
-
-    if (foo == 1 && bar == 1) {
-        t.pass();
-    } else {
-        t.fail(`foo = ${foo}, bar = ${bar}`);
-    };
-
-});
-
-test("engine.sleep, chain.cancel", async (t) => {
+test("chainController.sleep, chain.cancel", async (t) => {
+    /** @type {Chain<number>} */
     const chain = new Chain();
     let start = Date.now();
 
@@ -156,15 +127,15 @@ test("engine.sleep, chain.cancel", async (t) => {
     });
 
     chain
-        .add(async (previousResult, engine) => {
-            await engine.sleep(10000);
+        .add(async (previousResult, chainController) => {
+            await chainController.sleep(10000);
             return 0;
         })
-        .add(async (previousResult, engine) => {
-            await engine.sleep(10000);
+        .add(async (previousResult, chainController) => {
+            await chainController.sleep(10000);
             return 1;
         })
-        .add(async (previousResult, engine) => {
+        .add(async (previousResult, chainController) => {
             return 2;
         });
 
@@ -180,18 +151,18 @@ test("chain.waitForChainToFinish", async (t) => {
     const chain = new Chain();
     let result = 0;
     chain
-        .add(async (previousResult, engine) => {
-            await engine.sleep(100);
+        .add(async (previousResult, chainController) => {
+            await chainController.sleep(100);
             result = 1;
             return 1;
         })
-        .add(async (previousResult, engine) => {
-            await engine.sleep(100);
+        .add(async (previousResult, chainController) => {
+            await chainController.sleep(100);
             result = 2;
             return 2;
         })
-        .add(async (previousResult, engine) => {
-            await engine.sleep(100);
+        .add(async (previousResult, chainController) => {
+            await chainController.sleep(100);
             result = 3;
             return 3;
         });
@@ -207,23 +178,51 @@ test("chain.waitForChainToFinish", async (t) => {
     }
 });
 
-test("chain.getCtx", async (t) => {
+test("chainController.ctx", async (t) => {
     const chain = new Chain();
     const ctx = { foo: 0 };
 
     chain
-        .add(async (previousResult, engine) => {
-            engine.ctx.foo++;
+        .add(async (previousResult, chainController) => {
+            chainController.ctx.foo++;
             return 0;
         })
-        .add(async (previousResult, engine) => {
-            engine.ctx.foo++;
+        .add(async (previousResult, chainController) => {
+            chainController.ctx.foo++;
             return 1;
         });
 
     await chain.run(ctx);
 
-    if (chain.getCtx().foo == 2) {
+    if (chain.ctx.foo == 2) {
+        t.pass();
+    }
+    else {
+        t.fail();
+    }
+});
+
+
+test("chain set ctx in constructor", async (t) => {
+    /** @type {{foo: number}} */
+    const ctx = { foo: 0 };
+
+    /** @type {Chain<number, typeof ctx>} */
+    const chain = new Chain(ctx);
+
+    chain
+        .add(async (previousResult, chainController) => {
+            chainController.ctx.foo++;
+            return 0;
+        })
+        .add(async (previousResult, chainController) => {
+            chainController.ctx.foo++;
+            return 1;
+        });
+
+    await chain.run();
+
+    if (chain.ctx.foo == 2) {
         t.pass();
     }
     else {
@@ -240,12 +239,12 @@ test("chain.run (while chain is already running)", async (t) => {
     });
 
     chain
-        .add(async (previousResult, engine) => {
-            await engine.sleep(1000);
+        .add(async (previousResult, chainController) => {
+            await chainController.sleep(1000);
             return 0;
         })
-        .add(async (previousResult, engine) => {
-            await engine.sleep(1000);
+        .add(async (previousResult, chainController) => {
+            await chainController.sleep(1000);
             return 1;
         });
 
@@ -262,7 +261,7 @@ test("chain.run (while chain is already running)", async (t) => {
     }
 });
 
-test("engine.abortController", async (t) => {
+test("chainController.abortController", async (t) => {
     const chain = new Chain();
     let start = Date.now();
 
@@ -277,15 +276,15 @@ test("engine.abortController", async (t) => {
     });
 
     chain
-        .add(async (previousResult, engine) => {
-            engine.abortController.abort();
+        .add(async (previousResult, chainController) => {
+            chainController.abortController.abort();
             return 0;
         })
-        .add(async (previousResult, engine) => {
-            await engine.sleep(10000);
+        .add(async (previousResult, chainController) => {
+            await chainController.sleep(10000);
             return 1;
         })
-        .add(async (previousResult, engine) => {
+        .add(async (previousResult, chainController) => {
             return 2;
         });
 
@@ -297,7 +296,7 @@ test("engine.abortController", async (t) => {
     chain.cancel();
 });
 
-test("engine.fetch", async (t) => {
+test("chainController.fetch", async (t) => {
     const chain = new Chain();
     let foo = 0;
 
@@ -306,14 +305,14 @@ test("engine.fetch", async (t) => {
     });
 
     chain
-        .add(async (previousResult, engine) => {
-            let res = engine.fetch("https://example.com");
+        .add(async (previousResult, chainController) => {
+            let res = chainController.fetch("https://example.com");
 
             res.catch(e => {
                 foo++;
             });
 
-            engine.abortController.abort();
+            chainController.abortController.abort();
             return await res;
         });
 
@@ -328,7 +327,7 @@ test("engine.fetch", async (t) => {
 
 });
 
-test("engine.wrap", async (t) => {
+test("chainController.wrap", async (t) => {
     async function test() {
         await sleep(5000);
     }
@@ -337,8 +336,8 @@ test("engine.wrap", async (t) => {
 
     const chain = new Chain();
 
-    chain.add(async (v, engine) => {
-        let fn = engine.wrap(test);
+    chain.add(async (v, chainController) => {
+        let fn = chainController.wrap(test);
         await fn();
     });
 
@@ -364,9 +363,9 @@ test("abort() before fetch", async (t) => {
 
     const chain = new Chain();
 
-    chain.add(async (v, engine) => {
-        engine.abortController.abort();
-        await engine.fetch("https://example.com");
+    chain.add(async (v, chainController) => {
+        chainController.abortController.abort();
+        await chainController.fetch("https://example.com");
         foo++;
     });
 
@@ -390,9 +389,9 @@ test("abort() before wrap", async (t) => {
 
     const chain = new Chain();
 
-    chain.add(async (v, engine) => {
-        engine.abortController.abort();
-        await engine.wrap(sleep)(1000);
+    chain.add(async (v, chainController) => {
+        chainController.abortController.abort();
+        await chainController.wrap(sleep)(1000);
         foo++;
     });
 
@@ -416,9 +415,9 @@ test("abort() before sleep", async (t) => {
 
     const chain = new Chain();
 
-    chain.add(async (v, engine) => {
-        engine.abortController.abort();
-        await engine.sleep(1000);
+    chain.add(async (v, chainController) => {
+        chainController.abortController.abort();
+        await chainController.sleep(1000);
         foo++;
     });
 

@@ -19,8 +19,8 @@ async function test() {
 async function main() {
     const chain = new Chain();
 
-    chain.add(async (v, engine) => {
-        let fn = engine.wrap(test);
+    chain.add(async (v, chainController) => {
+        let fn = chainController.wrap(test);
         await fn();
     });
 
