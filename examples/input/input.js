@@ -78,5 +78,5 @@ chain
 
 input_element.addEventListener("keyup", async (event) => {
     await chain.cancel();
-    chain.run(ctx);
+    chain.run(0, ctx);
 });

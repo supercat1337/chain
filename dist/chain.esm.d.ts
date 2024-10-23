@@ -37,6 +37,7 @@ export class Chain<U extends unknown, T extends {
     add(task: Task<U, T>): Chain<U, T>;
     /**
      * Runs the chain, if it is not already running
+     * @param {*} [initValue] initial value
      * @param {T} [ctx] context object, passed to each task. If not provided, the context object of the last task will be used.
      * @returns {Promise<U|null>} the result of the last task, if the chain completed successfully
      * @throws {Error} with message "Already running", if the chain is already running
@@ -51,7 +52,7 @@ export class Chain<U extends unknown, T extends {
      * @listens Chain#error
      * @listens Chain#run
      */
-    run(ctx?: T): Promise<U | null>;
+    run(initValue?: any, ctx?: T): Promise<U | null>;
     /**
      * Waits until the chain is not running anymore. If the chain is not running, the function returns immediately.
      * @returns {Promise<void>}

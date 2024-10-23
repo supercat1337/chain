@@ -215,6 +215,7 @@ export class Chain {
 
     /**
      * Runs the chain, if it is not already running
+     * @param {*} [initValue] initial value
      * @param {T} [ctx] context object, passed to each task. If not provided, the context object of the last task will be used.
      * @returns {Promise<U|null>} the result of the last task, if the chain completed successfully
      * @throws {Error} with message "Already running", if the chain is already running
@@ -229,7 +230,7 @@ export class Chain {
      * @listens Chain#error
      * @listens Chain#run
      */
-    async run(ctx) {
+    async run(initValue, ctx) {
 
         if (this.#isRunning) {
 
@@ -245,7 +246,7 @@ export class Chain {
         this.#chainController = new ChainController(this);
 
         this.#isRunning = true;
-        var previousResult = undefined;
+        var previousResult = initValue;
 
         this.#completedSuccessfully = false;
         this.#returnValue = null;

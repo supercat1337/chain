@@ -192,7 +192,7 @@ test("chainController.ctx", async (t) => {
             return 1;
         });
 
-    await chain.run(ctx);
+    await chain.run(0, ctx);
 
     if (chain.ctx.foo == 2) {
         t.pass();
