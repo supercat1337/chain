@@ -8,15 +8,6 @@ import { EventEmitter } from "@supercat1337/event-emitter";
  * @typedef {(previousResult:any, chainController:ChainController<U,T>)=>any} Task */
 
 /**
- * Sleeps for the given amount of milliseconds.
- * @param {number} ms
- * @returns {Promise<void>}
- */
-function sleep(ms) {
-    return new Promise(resolve => setTimeout(resolve, ms));
-}
-
-/**
  * @template {any} U
  * @template {{[key:string]:any}} T 
  * @typedef {{lastTaskIndex: number, error: Error|null, chain: Chain<U,T>}} Details 
@@ -181,7 +172,7 @@ export class Chain {
         if (ctx) {
             this.#ctx = ctx;
         }
-     }
+    }
 
     /**
      * Adds an event listener to the chain
@@ -277,7 +268,7 @@ export class Chain {
                     if (!this.#chainController.abortController.signal.aborted) {
                         this.#chainController.abortController.abort();
                     }
-            
+
                     this.#isRunning = false;
 
                     if (e.message == "Complete") {
@@ -346,10 +337,35 @@ export class Chain {
      * Waits until the chain is not running anymore. If the chain is not running, the function returns immediately.
      * @returns {Promise<void>}
      */
-    async waitForChainToFinish() {
-        while (this.#isRunning) {
-            await sleep(100);
+    waitForChainToFinish() {
+
+        if (!this.#isRunning) {
+            return new Promise(resolve => {
+                resolve();
+            });
         }
+
+        return new Promise(resolve => {
+
+            const unsubscribe = () => {
+                /*
+                Error event with message "Already running" can be bubbled when the chain is already running.
+                We don't want to resolve the promise in that case.
+                */
+                if (!this.#isRunning) {
+                    completeUnsubscribe();
+                    cancelUnsubscribe();
+                    errorUnsubscribe();
+                    resolve();
+                }
+
+            }
+
+            let completeUnsubscribe = this.#eventEmitter.on("complete", unsubscribe);
+            let cancelUnsubscribe = this.#eventEmitter.on("cancel", unsubscribe);
+            let errorUnsubscribe = this.#eventEmitter.on("error", unsubscribe);
+
+        });
     }
 
     /**

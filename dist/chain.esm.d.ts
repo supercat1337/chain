@@ -88,6 +88,10 @@ export class Chain<U extends unknown, T extends {
 /**
  * @template {any} U
  * @template {{[key:string]:any}} T
+ * @typedef {(previousResult:any, chainController:ChainController<U,T>)=>any} Task */
+/**
+ * @template {any} U
+ * @template {{[key:string]:any}} T
  * @typedef {{lastTaskIndex: number, error: Error|null, chain: Chain<U,T>}} Details
  * */
 /**

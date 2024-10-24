@@ -178,6 +178,69 @@ test("chain.waitForChainToFinish", async (t) => {
     }
 });
 
+
+test("chain.waitForChainToFinish (error)", async (t) => {
+    const chain = new Chain();
+    let result = 0;
+    chain
+        .add(async (previousResult, chainController) => {
+            await chainController.sleep(100);
+            result = 1;
+            return 1;
+        })
+        .add(async (previousResult, chainController) => {
+            throw new Error("foo");
+            result = 2;
+            return 2;
+        })
+        .add(async (previousResult, chainController) => {
+            await chainController.sleep(100);
+            result = 3;
+            return 3;
+        });
+
+    chain.run();
+    await chain.waitForChainToFinish();
+
+    if (result == 1) {
+        t.pass();
+    }
+    else {
+        t.fail();
+    }
+});
+
+test("chain.waitForChainToFinish (not bubbling)", async (t) => {
+    const chain = new Chain();
+    let result = 0;
+    chain
+        .add(async (previousResult, chainController) => {
+            await chainController.sleep(100);
+            result = 1;
+            return 1;
+        })
+        .add(async (previousResult, chainController) => {
+            throw new Error("foo");
+            result = 2;
+            return 2;
+        })
+        .add(async (previousResult, chainController) => {
+            await chainController.sleep(100);
+            result = 3;
+            return 3;
+        });
+
+    await chain.run();
+    await chain.waitForChainToFinish();
+
+    if (result == 1) {
+        t.pass();
+    }
+    else {
+        t.fail();
+    }
+});
+
 test("chainController.ctx", async (t) => {
     const chain = new Chain();
     const ctx = { foo: 0 };
