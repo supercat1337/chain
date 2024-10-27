@@ -24,11 +24,11 @@ export class Chain<U extends unknown, T extends {
     tasks: Task<U, T>[];
     /**
      * Adds an event listener to the chain
-     * @param {"complete"|"cancel"|"error"|"run"} event
+     * @param {"complete"|"cancel"|"error"|"run"|"fail"} event
      * @param {(details:Details<U,T>)=>void} listener
      * @returns {()=>void} unsubscribe function
      */
-    on(event: "complete" | "cancel" | "error" | "run", listener: (details: Details<U, T>) => void): () => void;
+    on(event: "complete" | "cancel" | "error" | "run" | "fail", listener: (details: Details<U, T>) => void): () => void;
     /**
      * Adds a task to the chain
      * @param {Task<U,T>} task
@@ -47,10 +47,12 @@ export class Chain<U extends unknown, T extends {
      * @fires Chain#cancel
      * @fires Chain#error
      * @fires Chain#run
+     * @fires Chain#fail
      * @listens Chain#complete
      * @listens Chain#cancel
      * @listens Chain#error
      * @listens Chain#run
+     * @listens Chain#fail
      */
     run(initValue?: any, ctx?: T): Promise<U | null>;
     /**

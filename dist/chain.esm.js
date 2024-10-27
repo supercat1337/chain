@@ -144,7 +144,7 @@ class ChainController {
  */
 class Chain {
 
-    /** @type {EventEmitter<"complete"|"cancel"|"error"|"run">} */
+    /** @type {EventEmitter<"complete"|"cancel"|"error"|"run"|"fail">} */
     #eventEmitter = new EventEmitter();
 
     /** @type {Task<U,T>[]} */
@@ -177,7 +177,7 @@ class Chain {
 
     /**
      * Adds an event listener to the chain
-     * @param {"complete"|"cancel"|"error"|"run"} event
+     * @param {"complete"|"cancel"|"error"|"run"|"fail"} event
      * @param {(details:Details<U,T>)=>void} listener
      * @returns {()=>void} unsubscribe function
      */
@@ -197,7 +197,7 @@ class Chain {
 
     /**
      * 
-     * @param {"complete"|"cancel"|"error"|"run"} event
+     * @param {"complete"|"cancel"|"error"|"run"|"fail"} event
      * @param {Details<U,T>} details
      * 
      */
@@ -217,10 +217,12 @@ class Chain {
      * @fires Chain#cancel
      * @fires Chain#error
      * @fires Chain#run
+     * @fires Chain#fail
      * @listens Chain#complete
      * @listens Chain#cancel
      * @listens Chain#error
      * @listens Chain#run
+     * @listens Chain#fail
      */
     async run(initValue, ctx) {
 
@@ -262,6 +264,12 @@ class Chain {
             while (this.tasks[i]) {
 
                 try {
+                    if (i > 0) {
+                        // separate each task by 0 ms
+                        await new Promise((resolve) => {
+                            setTimeout(resolve, 0);
+                        });
+                    }
                     this.#chainController.checkAbortSignal();
                     previousResult = await this.tasks[i](previousResult, this.#chainController);
                 }
@@ -293,6 +301,12 @@ class Chain {
                             error: null,
                             lastTaskIndex: i,
                         });
+
+                        this.#emit("fail", {
+                            chain: this,
+                            error: null,
+                            lastTaskIndex: i,
+                        });
                     }
                     else {
 
@@ -300,6 +314,12 @@ class Chain {
                         this.#returnValue = null;
 
                         this.#emit("error", {
+                            chain: this,
+                            error: e,
+                            lastTaskIndex: i,
+                        });
+
+                        this.#emit("fail", {
                             chain: this,
                             error: e,
                             lastTaskIndex: i,

@@ -101,6 +101,7 @@ The `Chain` class provides methods for adding tasks, running the chain, and mana
 * **`cancel`**: Fired when the chain is cancelled.
 * **`error`**: Fired when an error occurs during execution.
 * **`run`**: Fired when the chain is started running.
+* **`fail`**: Fired when the chain fails to complete successfully.
 
 Details are provided in listener functions. The `details` object has the following properties:
 
