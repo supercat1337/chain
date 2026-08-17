@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Cancel – Chain Demo</title>
+        <link rel="stylesheet" href="../../styles/demo.css" />
+        <style>
+            #status {
+                font-weight: 500;
+            }
+            #log {
+                background: #0f172a;
+                color: #e2e8f0;
+                padding: 0.75rem;
+                border-radius: 0.5rem;
+                font-family: monospace;
+                font-size: 0.875rem;
+                max-height: 200px;
+                overflow-y: auto;
+                white-space: pre-wrap;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <h2>Cancel</h2>
+            <p>Start a long-running chain and cancel it after 1 second.</p>
+
+            <section>
+                <button id="start-btn">Start Chain</button>
+                <button id="cancel-btn" class="danger">Cancel</button>
+            </section>
+
+            <section>
+                <div id="status">Idle</div>
+                <div id="log">Ready</div>
+            </section>
+
+            <p><a href="../../index.html">← Back</a></p>
+        </div>
+
+        <script type="importmap">
+            {
+                "imports": {
+                    "@supercat1337/chain": "../../../dist/chain.esm.bundle.js"
+                }
+            }
+        </script>
+        <script type="module" src="main.js"></script>
+    </body>
+</html>

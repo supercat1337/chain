@@ -1,34 +1,83 @@
 {
-  "name": "@supercat1337/chain",
-  "version": "1.0.8",
-  "description": "Chain is a library for creating and executing tasks in a specific order. It provides methods for adding tasks, running the chain, and managing its state.",
-  "main": "index.js",
-  "scripts": {
-    "test": "c8 ava",
-    "build": "npm run remove_type_files && npm run build_esm && npm run build_esm_min && npm run create_types",
-    "build_esm": "rollup ./src/index.js --file ./dist/chain.esm.js --format es",
-    "build_esm_min": "esbuild --minify --bundle --platform=neutral --legal-comments=none ./src/index.js --outfile=./dist/chain.esm.min.js",
-    "create_types": "npx -p typescript tsc --project my.tsconfig.types.json",
-    "remove_type_files": "del /q *.d.ts *.d.ts.map && cd dist && del /s /q *.d.ts *.d.ts.map && cd ../src && del /s /q *.d.ts *.d.ts.map && cd .."
-  },
-  "author": "Supercat",
-  "license": "MIT",
-  "devDependencies": {
-    "@types/node": "^20.12.2",
-    "ava": "^6.1.2",
-    "c8": "^9.1.0",
-    "esbuild": "^0.20.2"
-  },
-  "type": "module",
-  "moduleResolution": "nodenext",
-  "keywords": [
-    "chain", "order"
-  ],
-  "publishConfig": {
-    "registry": "https://registry.npmjs.org"
-  },
-  "homepage": "https://github.com/supercat1337/chain",
-  "dependencies": {
-    "@supercat1337/event-emitter": "^1.0.6"
-  }
+    "name": "@supercat1337/chain",
+    "version": "2.0.0",
+    "description": "Promise-based task chaining with cancellation, context, and events. Build robust async workflows, pipelines, and retry logic.",
+    "type": "module",
+    "moduleResolution": "nodenext",
+    "main": "dist/chain.esm.js",
+    "types": "dist/types.d.ts",
+    "exports": {
+        ".": {
+            "types": "./dist/types.d.ts",
+            "import": "./dist/chain.esm.js",
+            "default": "./dist/chain.esm.js"
+        }
+    },
+    "files": [
+        "dist/",
+        "README.md",
+        "AGENTS.md",
+        "LICENSE"
+    ],
+    "scripts": {
+        "test": "c8 ava",
+        "clean": "shx rm -rf ./dist && shx mkdir ./dist",
+        "build_esm": "rollup ./src/index.js --file ./dist/chain.esm.js --format es",
+        "build_esm_bundle": "esbuild ./src/index.js --format=esm --bundle --platform=neutral --outfile=./dist/chain.esm.bundle.js",
+        "gen_types": "npx tsc --project my.tsconfig.types.json",
+        "bundle_types": "node scripts/bundle-types.js",
+        "build": "npm run clean && npm run build_esm && npm run build_esm_bundle && npm run gen_types && npm run bundle_types && shx rm -rf dist/types-temp",
+        "lint": "eslint src/ tests/ scripts/",
+        "lint_fix": "npm run lint -- --fix"
+    },
+    "author": "Albert Bazaleev",
+    "license": "MIT",
+    "devDependencies": {
+        "@eslint/js": "^10.0.1",
+        "ava": "^6.1.2",
+        "c8": "^12.0.0",
+        "eslint": "^10.8.1",
+        "eslint-plugin-jsdoc": "^63.3.3",
+        "globals": "^17.9.0",
+        "rollup": "^4.60.1",
+        "rollup-plugin-cleanup": "^3.2.1",
+        "shx": "^0.4.0"
+    },
+    "keywords": [
+        "chain",
+        "async",
+        "promise",
+        "tasks",
+        "sequence",
+        "pipeline",
+        "workflow",
+        "cancellation",
+        "abort",
+        "context",
+        "events",
+        "javascript",
+        "typescript",
+        "control-flow",
+        "retry"
+    ],
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/supercat1337/chain"
+    },
+    "homepage": "https://github.com/supercat1337/chain#readme",
+    "ava": {
+        "files": [
+            "tests/**/*.test.js"
+        ],
+        "nodeArguments": [
+            "--experimental-vm-modules"
+        ],
+        "extensions": [
+            "js"
+        ],
+        "timeout": "30s"
+    },
+    "dependencies": {
+        "@supercat1337/event-emitter": "^3.0.0"
+    }
 }

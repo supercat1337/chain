@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Fetch &amp; Cache – Chain Demo</title>
+        <link rel="stylesheet" href="../../styles/demo.css" />
+        <style>
+            #output {
+                background: #f1f5f9;
+                padding: 0.75rem;
+                border-radius: 0.5rem;
+                min-height: 3rem;
+                font-family: monospace;
+                white-space: pre-wrap;
+                word-break: break-all;
+            }
+            #status {
+                font-weight: 500;
+            }
+            #error {
+                color: #dc2626;
+                margin-top: 0.5rem;
+            }
+            input {
+                max-width: 300px;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <h2>Fetch &amp; Cache</h2>
+            <p>
+                Enter a comment ID (1–21) to fetch from <code>jsonplaceholder.org</code>. Results
+                are cached.
+            </p>
+
+            <section>
+                <label for="input">Comment ID:</label>
+                <input type="number" id="input" min="1" max="21" placeholder="e.g. 5" />
+                <button id="fetch-btn">Fetch</button>
+                <button id="clear-cache-btn" class="secondary">Clear Cache</button>
+            </section>
+
+            <section>
+                <div id="status">—</div>
+                <div id="error"></div>
+                <div id="output"></div>
+            </section>
+
+            <p><a href="../../index.html">← Back</a></p>
+        </div>
+
+        <script type="importmap">
+            {
+                "imports": {
+                    "@supercat1337/chain": "../../../dist/chain.esm.bundle.js"
+                }
+            }
+        </script>
+        <script type="module" src="main.js"></script>
+    </body>
+</html>

@@ -1,271 +1,292 @@
-# Chain.js 
+# Chain.js
 
-The `Chain` is a library for creating and executing tasks in a specific order. It provides methods for adding tasks, running the chain, and managing its state.
+**Chain** is a lightweight, promise-based library for building and executing sequential tasks with built‑in cancellation, context propagation, and event emission.  
+It is ideal for orchestrating asynchronous workflows, retry logic, or data pipelines.
+
+---
 
 ## Features
 
-* **Task chaining**: Create a sequence of tasks that can be executed in a specific order.
-* **Event listeners**: Add event listeners to the chain for specific events (e.g. "complete", "cancel", "error", "run").
-* **Context management**: Associate a context object with the chain, which can be accessed by tasks during execution.
-* **State management**: Manage the state of the chain, including whether it is currently running or not.
-* **Cancellation**: Cancel the running chain, if it is currently running.
+- **Task chaining** – compose asynchronous tasks in a clear, linear sequence.
+- **Cancellation** – cancel the entire chain at any point using `AbortController` or the provided `cancel()` method.
+- **Context** – share state across tasks via a typed context object.
+- **Events** – subscribe to `run`, `complete`, `cancel`, `error`, and `fail` events.
+- **Abort‑aware utilities** – built‑in `sleep`, `fetch`, and `wrap` that respect cancellation signals.
+- **Early completion** – finish the chain prematurely with a custom result.
+- **TypeScript‑friendly** – fully typed with JSDoc; works seamlessly in JavaScript and TypeScript projects.
+
+---
 
 ## Installation
 
-To install the `Chain` library, run the following command in your terminal:
-`npm install @supercat1337/chain`
+```bash
+npm install @supercat1337/chain
+```
 
-## Usage
+---
 
-Here is an example of how to use the `Chain` class:
+## Quick Start
+
 ```javascript
-import { Chain } from "@supercat1337/chain";
+import { Chain } from '@supercat1337/chain';
 
-function sleep(ms) {
-    return new Promise(resolve => setTimeout(resolve, ms));
+const chain = new Chain(); // optional: pass a context object
+
+chain
+    .add(async prev => {
+        console.log('Task 1');
+        return 1;
+    })
+    .add(async prev => {
+        console.log(`Task 2, previous = ${prev}`);
+        return prev + 1;
+    })
+    .add(async prev => {
+        console.log(`Task 3, result = ${prev + 1}`);
+        return prev + 1;
+    });
+
+const result = await chain.run();
+console.log('Final result:', result);
+// Output: Task 1, Task 2, Task 3, Final result: 3
+```
+
+---
+
+## API Reference
+
+### `Chain` class
+
+#### Constructor
+
+```typescript
+new Chain<T>(ctx?: T, options?: { signal?: AbortSignal })
+```
+
+- **`ctx`** – shared context object (any `Record<string, any>`). Defaults to `{}`.
+- **`options.signal`** – an external `AbortSignal` that can cancel the chain from outside.
+
+#### Properties
+
+| Property                | Type        | Description                                                 |
+| ----------------------- | ----------- | ----------------------------------------------------------- |
+| `ctx`                   | `T`         | The context object shared among tasks.                      |
+| `returnValue`           | `U \| null` | The final result if the chain completed successfully.       |
+| `completedSuccessfully` | `boolean`   | `true` if the chain finished without cancellation or error. |
+| `isRunning`             | `boolean`   | `true` while the chain is executing.                        |
+
+#### Methods
+
+##### `on(event, listener)`
+
+Adds an event listener. Returns an **unsubscribe** function.
+
+```typescript
+chain.on('complete', details => console.log(details.chain.returnValue));
+```
+
+Events: `'run'`, `'complete'`, `'cancel'`, `'error'`, `'fail'`.
+
+##### `add(task)`
+
+Appends a task to the chain.
+
+```typescript
+chain.add((previousResult, controller) => {
+    // previousResult – value returned by the previous task (or initValue)
+    // controller – ChainController instance (see below)
+    return newValue; // or Promise
+});
+```
+
+##### `run(initValue?)`
+
+Executes the chain. Returns a promise that resolves with the final result (or `null` if cancelled/failed).
+
+- **Throws** `AlreadyRunningError` if the chain is already running.
+
+##### `cancel()`
+
+Cancels the running chain. Returns a promise that resolves when the chain has fully stopped.
+
+##### `waitForChainToFinish()`
+
+Waits for the chain to finish (whether by completion, cancellation, or error). Resolves immediately if not running.
+
+---
+
+### `ChainController` object
+
+The second argument passed to every task provides control over the chain.
+
+#### Properties
+
+- `chain` – reference to the parent `Chain` instance.
+- `abortController` – the internal `AbortController`.
+- `ctx` – shortcut to `chain.ctx`.
+
+#### Methods
+
+##### `cancel()`
+
+Throws a `CancelError` to cancel the chain.
+
+##### `complete(value)`
+
+Throws a `CompleteError` with the given value to finish the chain early.
+
+##### `sleep(ms)`
+
+Sleeps for `ms` milliseconds. The promise rejects with `CancelError` if the chain is cancelled during sleep.
+
+##### `fetch(url, options)`
+
+Wraps `fetch()` with the internal abort signal. Automatically aborts the request on cancellation.
+
+##### `wrap(fn)`
+
+Wraps an async function so that it rejects with `CancelError` if the chain is cancelled during its execution. Useful for integrating third‑party callbacks that do not support `AbortSignal`.
+
+##### `checkAbortSignal()`
+
+Throws `CancelError` if the chain has been cancelled.
+
+---
+
+## Error Types
+
+All errors thrown by the library are subclasses of `Error` and can be caught via `try/catch` or the `'error'` event.
+
+- **`CancelError`** – thrown when the chain is cancelled (via `cancel()` or external signal).
+- **`CompleteError`** – thrown when `complete()` is called (it carries the return value in `error.returnValue`).
+- **`AlreadyRunningError`** – thrown when `run()` is called on a chain that is already running.
+
+These errors are exported and can be imported:
+
+```javascript
+import { CancelError, CompleteError, AlreadyRunningError } from '@supercat1337/chain';
+```
+
+---
+
+## Examples
+
+### 1. Early completion with `complete()`
+
+```javascript
+import { Chain } from '@supercat1337/chain';
+
+const chain = new Chain();
+
+chain
+    .add(async prev => {
+        console.log('Task 1');
+        return 10;
+    })
+    .add(async (prev, ctrl) => {
+        console.log('Task 2 – completing early');
+        ctrl.complete(42); // skip remaining tasks
+    })
+    .add(async () => {
+        console.log('Task 3 – never executed');
+    });
+
+const result = await chain.run();
+console.log('Result:', result); // 42
+```
+
+### 2. Cancellation
+
+```javascript
+import { Chain } from '@supercat1337/chain';
+
+const chain = new Chain();
+
+chain.on('cancel', () => console.log('Cancelled!'));
+
+chain
+    .add(async (prev, ctrl) => {
+        console.log('Task 1');
+        ctrl.cancel(); // cancels the whole chain
+    })
+    .add(async () => {
+        console.log('Task 2 – never executed');
+    });
+
+const result = await chain.run();
+console.log('Result:', result); // null
+```
+
+### 3. Using `sleep` and external cancellation
+
+```javascript
+import { Chain } from '@supercat1337/chain';
+
+const chain = new Chain();
+
+chain.add(async (prev, ctrl) => {
+    console.log('Waiting 5s...');
+    await ctrl.sleep(5000);
+    return 'done';
+});
+
+const promise = chain.run();
+setTimeout(() => chain.cancel(), 1000); // cancel after 1s
+await promise; // throws or resolves with null
+```
+
+### 4. Abort‑aware `fetch`
+
+```javascript
+chain.add(async (prev, ctrl) => {
+    const response = await ctrl.fetch('https://api.example.com/data');
+    return response.json();
+});
+// The fetch will abort automatically if the chain is cancelled.
+```
+
+### 5. Wrapping an uncancellable function
+
+```javascript
+import { Chain } from '@supercat1337/chain';
+
+async function longRunningTask() {
+    // This function does not support AbortSignal
 }
 
-/** @type {Chain<number>} */
 const chain = new Chain();
-
-// Add an event listener for the "complete" event
-chain.on("complete", details => {
-  console.log(`Chain completed with result: ${details.chain.returnValue}`);
+chain.add(async (prev, ctrl) => {
+    const wrapped = ctrl.wrap(longRunningTask);
+    await wrapped(); // rejects with CancelError if chain is cancelled
 });
-
-chain.on("cancel", () => {
-    console.log("cancel");
-});
-
-chain.on("error", (details) => {
-    console.log("error", details.error);
-});
-
-chain.on("run", () => {
-    console.log("run");
-});
-
-chain
-    .add((previousResult, chainController) => {
-        console.log("task 0");
-        return 0;
-    })
-    .add((previousResult, chainController) => {
-        console.log("task 1");
-        console.log("previousResult = ", previousResult);
-        return 1;
-    })
-    .add((previousResult, chainController) => {
-        console.log("task 2");
-        return 2;
-    });
-
-chain.run().then(result => {
-    console.log("result = ", result);
-});
-
-/* Output:
-run
-task 0
-task 1
-previousResult =  0
-task 2
-Chain completed with result: 2
-result =  2
-*/
-
-```
-## Chain class
-
-The `Chain` class provides methods for adding tasks, running the chain, and managing its state.
-
-### Properties
-
-* **`tasks`**: The array of tasks being managed by the chain.
-* **`isRunning`**: Whether the chain is currently running.
-* **`completedSuccessfully`**: Whether the chain completed successfully.
-* **`returnValue`**: The return value of the last task in the chain.
-* **`ctx`**: The context object associated with the chain. This can be used to pass data between tasks. By default, the context object is an empty object. 
-
-### Methods
-
-* **`on(event, listener)`**: Adds an event listener to the chain for a specific event. Returns a function that can be used to unsubscribe from the event.
-* **`add(task)`**: Adds a task to the end of the chain.
-* **`run(initValue?, ctx?)`**: Runs the chain, executing each task in sequence, and returns a promise that resolves with the result of the last task if the chain completes successfully. Ctx is the context object associated with the chain.
-* **`waitForChainToFinish()`**: Waits until the chain is no longer running and returns a promise that resolves immediately if the chain is not running.
-* **`cancel()`**: Cancels the running chain, if it is currently running.
-
-### Events
-
-* **`complete`**: Fired when the chain completes successfully.
-* **`cancel`**: Fired when the chain is cancelled.
-* **`error`**: Fired when an error occurs during execution.
-* **`run`**: Fired when the chain is started running.
-* **`fail`**: Fired when the chain fails to complete successfully.
-
-Details are provided in listener functions. The `details` object has the following properties:
-
-* **`chain`**: The task chain being managed by the chainController.
-* **`lastTaskIndex`**: The index of the last task in the chain that was executed.
-* **`error`**: The error raised by the task, if any.
-
-## Chain management by using the `ChainController` object.
-
-The second parameter of the task function in the `Chain` class is `chainController` object.
-
-`chainController` object provides methods for managing the chain's state and executing tasks. 
-
-### Properties
-
-* **`chain`**: The task chain being managed by the chainController.
-* **`abortController`**: The `AbortController` associated with the chainController.
-* **`ctx`**: The context object associated with the chain.
-
-### Methods
-
-* **`cancel()`**: Cancels the running chain, if it is currently running.
-* **`complete(value)`**: Completes the running chain with the given value, if it is currently running.
-* **`sleep(ms)`**: Sleeps for the given amount of milliseconds. If the chainController is cancelled during the sleep, the promise is resolved immediately.
-* **`fetch(url, options)`**: Wraps the global `fetch` function and adds the abort signal to the given options. If the chainController is cancelled during the fetch, the promise is resolved immediately.
-* **`wrap(fn)`**: Wraps a function to ensure it respects the ChainController's abort signal. If the chainController is cancelled during the execution of the function, the promise is rejected with an "Cancel" error.
-* **`checkAbortSignal()`**: Checks if the abort signal is aborted and cancels the running chain if needed.
-
-### Usage
-
-Here is an example of using the `chainController` object. Chain is completed with value 100:
-```javascript
-import { Chain } from "@supercat1337/chain";
-
-/** @type {Chain<number>} */
-const chain = new Chain();
-
-chain
-    .add(async (previousResult, chainController) => {
-        console.log("task 0");
-        return 0;
-    })
-    .add(async (previousResult, chainController) => {
-        console.log("task 1");
-        chainController.complete(100);
-        return 1;
-    })
-    .add(async (previousResult, chainController) => {
-        console.log("task 2");
-        return 2;
-    });
-
-chain.run().then(result => {
-    console.log("result = ", result);
-});
-
-/* Output:
-task 0
-task 1
-result =  100
-*/
 ```
 
-### Example of cancelling the chain
+---
 
-Here is an example of cancelling the chain:
+## Live Demos
 
-```javascript
-import { Chain } from "@supercat1337/chain";
+Explore the interactive examples in the [demo](./demo) directory:
 
-/** @type {Chain<number>} */
-const chain = new Chain();
+- [Basic](./demo/pages/basic/) – simple chain with events
+- [Fetch + Cache](./demo/pages/fetch-cache/) – data fetching with caching and cancellation
+- [Cancel](./demo/pages/cancel/) – cancel mid‑execution
+- [Complete](./demo/pages/complete/) – early completion
+- [Wrap](./demo/pages/wrap/) – wrapping async functions
 
-chain.on("cancel", (details) => {
-    console.log("cancel");
-});
+---
 
-chain
-    .add((previousResult, chainController) => {
-        console.log("task 0");
-        return 0;
-    })
-    .add((previousResult, chainController) => {
-        console.log("task 1");
-        chainController.cancel();
-        return 1;
-    })
-    .add((previousResult, chainController) => {
-        console.log("task 2");
-        return 2;
-    });
+## Running the Examples
 
-chain.run().then(result => {
-    console.log("result = ", result);
-});
+Clone the repository and run any example:
 
-/* Output:
-task 0
-task 1
-cancel
-result =  null
-*/
+```bash
+node examples/basic.js
 ```
 
-### Example of using cancellable fetch 
+For the web demos, serve the `demo/` folder with any static server (e.g., `npx serve demo`).
 
-Here is an example of fetching data with the `chainController` object and aborting the request:
-
-```javascript
-import { Chain } from "@supercat1337/chain";
-
-    const chain = new Chain();
-
-    chain
-        .add((previousResult, chainController) => {
-            return chainController.fetch("https://example.com");
-        });
-
-    chain.run();
-    await chain.cancel();
-```
-
-### Example of wrapping an async function 
-
-Here is an example of wrapping a function that can't be cancelled by the abort signal:
-
-```javascript
-import { Chain } from "@supercat1337/chain";
-
-// async function that can't be cancelled by the abort signal.
-// function will be executed after 5 seconds and will log "test"
-async function test() {
-    return new Promise(resolve => setTimeout(()=>{
-        console.log("test");
-        resolve();
-    }, 5000));    
-
-}
-
-const chain = new Chain();
-
-chain.add(async (v, chainController) => {
-    let fn = chainController.wrap(test);
-    await fn();
-});
-
-chain.add(async () => {
-    console.log("Never executed");
-});
-
-console.log("Start");
-chain.run();
-await sleep(1000);
-await chain.cancel();
-console.log("End");
-
-/* Output:
-Start
-End
-test
-*/
-
-Also see the [examples](./examples) directory for more examples.
+---
 
 ## License
 
-The `Chain` class is licensed under the [MIT License](https://opensource.org/licenses/MIT).
+MIT © [Albert Bazaleev](https://github.com/supercat1337)

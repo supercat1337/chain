@@ -1,0 +1,288 @@
+/* demo.css – Common styles for store2-dom demo pages */
+
+/* ---- Reset & Base ---- */
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+    background: #f5f7fa;
+    color: #1e293b;
+    line-height: 1.6;
+    padding: 2rem 1rem;
+}
+
+.container {
+    max-width: 800px;
+    margin: 0 auto;
+    background: #ffffff;
+    border-radius: 1rem;
+    box-shadow:
+        0 4px 6px -1px rgba(0, 0, 0, 0.1),
+        0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    padding: 2rem;
+}
+
+/* ---- Typography ---- */
+h1 {
+    font-size: 2rem;
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+    color: #0f172a;
+}
+
+h2 {
+    font-size: 1.25rem;
+    font-weight: 600;
+    margin: 1.5rem 0 0.75rem 0;
+    color: #1e293b;
+    border-bottom: 2px solid #e2e8f0;
+    padding-bottom: 0.5rem;
+}
+
+p {
+    margin-bottom: 1rem;
+    color: #475569;
+}
+
+a {
+    color: #3b82f6;
+    text-decoration: none;
+}
+a:hover {
+    text-decoration: underline;
+}
+
+/* ---- Demo List (index) ---- */
+.demo-list {
+    list-style: none;
+    padding: 0;
+    margin: 1.5rem 0;
+}
+.demo-list li {
+    padding: 0.75rem 0;
+    border-bottom: 1px solid #e2e8f0;
+}
+.demo-list li:last-child {
+    border-bottom: none;
+}
+.demo-list a {
+    font-weight: 500;
+    display: block;
+}
+.demo-list a small {
+    font-weight: 400;
+    color: #64748b;
+    display: block;
+    font-size: 0.875rem;
+}
+
+/* ---- Sections ---- */
+section {
+    margin: 1.5rem 0;
+    padding: 1rem;
+    background: #f8fafc;
+    border-radius: 0.75rem;
+    border: 1px solid #e2e8f0;
+}
+
+section h2 {
+    margin-top: 0;
+    border-bottom-color: #cbd5e1;
+}
+
+/* ---- Buttons ---- */
+button,
+.button {
+    display: inline-block;
+    padding: 0.5rem 1rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: #ffffff;
+    background: #3b82f6;
+    border: none;
+    border-radius: 0.5rem;
+    cursor: pointer;
+    transition: background 0.15s ease;
+    line-height: 1.4;
+}
+button:hover,
+.button:hover {
+    background: #2563eb;
+}
+button:active {
+    background: #1d4ed8;
+}
+button.secondary {
+    background: #64748b;
+}
+button.secondary:hover {
+    background: #475569;
+}
+button.danger {
+    background: #ef4444;
+}
+button.danger:hover {
+    background: #dc2626;
+}
+button:disabled {
+    opacity: 0.5;
+    pointer-events: none;
+}
+
+/* ---- Forms & Inputs ---- */
+input[type='text'],
+input[type='number'],
+input[type='search'],
+textarea,
+select {
+    width: 100%;
+    max-width: 400px;
+    padding: 0.5rem 0.75rem;
+    font-size: 1rem;
+    border: 1px solid #cbd5e1;
+    border-radius: 0.5rem;
+    background: #ffffff;
+    transition: border-color 0.15s ease;
+}
+input:focus,
+textarea:focus,
+select:focus {
+    outline: none;
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+}
+
+input[type='checkbox'],
+input[type='radio'] {
+    margin-right: 0.5rem;
+}
+
+/* ---- Cards / Boxes ---- */
+.box {
+    padding: 1rem;
+    margin: 0.5rem 0;
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 0.5rem;
+    transition: all 0.2s ease;
+}
+
+/* ---- Todo App specific ---- */
+.todo-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem 0.5rem;
+    border-bottom: 1px solid #e2e8f0;
+    background: #ffffff;
+    border-radius: 0.5rem;
+    margin-bottom: 0.25rem;
+    transition: background 0.1s ease;
+}
+.todo-item:hover {
+    background: #f1f5f9;
+}
+.todo-item .todo-text {
+    flex: 1;
+    word-break: break-word;
+}
+.todo-item.done .todo-text {
+    text-decoration: line-through;
+    color: #94a3b8;
+}
+.todo-item .todo-delete {
+    background: none;
+    border: none;
+    font-size: 1.25rem;
+    color: #94a3b8;
+    cursor: pointer;
+    padding: 0 0.25rem;
+    line-height: 1;
+}
+.todo-item .todo-delete:hover {
+    color: #ef4444;
+}
+
+.filters {
+    display: flex;
+    gap: 0.5rem;
+    margin: 1rem 0 1.5rem 0;
+    flex-wrap: wrap;
+}
+.filters button {
+    background: #e2e8f0;
+    color: #1e293b;
+    padding: 0.25rem 1rem;
+    border-radius: 2rem;
+    font-size: 0.875rem;
+}
+.filters button.active {
+    background: #3b82f6;
+    color: #ffffff;
+}
+.filters button:hover {
+    background: #cbd5e1;
+}
+.filters button.active:hover {
+    background: #2563eb;
+}
+
+.stats {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid #e2e8f0;
+    color: #475569;
+    font-size: 0.875rem;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+/* ---- Utilities ---- */
+.hidden {
+    display: none !important;
+}
+
+.text-center {
+    text-align: center;
+}
+
+.mt-2 {
+    margin-top: 1rem;
+}
+
+/* ---- Responsive ---- */
+@media (max-width: 640px) {
+    .container {
+        padding: 1rem;
+    }
+    h1 {
+        font-size: 1.5rem;
+    }
+    input[type='text'],
+    input[type='number'],
+    textarea,
+    select {
+        max-width: 100%;
+    }
+    .filters {
+        gap: 0.25rem;
+    }
+    .stats {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 0.5rem;
+    }
+}
+
+.d-none {
+    display: none !important;
+}
