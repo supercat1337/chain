@@ -2,5 +2,6 @@ node_modules
 creds
 coverage
 docs
+package-lock.json
 list.txt
 bundles/
