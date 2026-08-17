@@ -6,7 +6,14 @@
         <title>Wrap – Chain Demo</title>
         <link rel="stylesheet" href="../../styles/demo.css" />
         <style>
-            #log {
+            #output {
+                background: #f1f5f9;
+                padding: 0.75rem;
+                border-radius: 0.5rem;
+                font-family: monospace;
+                min-height: 3rem;
+            }
+            .log {
                 background: #0f172a;
                 color: #e2e8f0;
                 padding: 0.75rem;
@@ -17,24 +24,27 @@
                 overflow-y: auto;
                 white-space: pre-wrap;
             }
-            #status {
-                font-weight: 500;
-            }
         </style>
     </head>
     <body>
         <div class="container">
             <h2>Wrap</h2>
-            <p>Wrap an async function to respect the chain's abort signal.</p>
+            <p>Wrap an async function to respect the abort signal.</p>
 
             <section>
-                <button id="start-btn">Start Chain</button>
-                <button id="cancel-btn" class="danger">Cancel</button>
+                <button id="run-btn">Run Chain</button>
+                <button id="cancel-btn" class="danger">Cancel after 1s</button>
+                <button id="reset-btn" class="secondary">Reset</button>
             </section>
 
             <section>
-                <div id="status">Idle</div>
-                <div id="log">Ready</div>
+                <h3>Result</h3>
+                <div id="output">—</div>
+            </section>
+
+            <section>
+                <h3>Log</h3>
+                <div id="log" class="log">Ready</div>
             </section>
 
             <p><a href="../../index.html">← Back</a></p>

@@ -1,66 +1,81 @@
 // @ts-check
-import { Chain } from '@supercat1337/chain';
+import { Chain, AlreadyRunningError } from '@supercat1337/chain';
 
+// DOM elements
 const outputEl = document.getElementById('output');
 const logEl = document.getElementById('log');
 const runBtn = document.getElementById('run-btn');
 const resetBtn = document.getElementById('reset-btn');
 
-/** @type {Chain<number>} */
-let chain = new Chain();
+// Safety checks
+if (!outputEl) throw new Error('Element #output not found');
+if (!logEl) throw new Error('Element #log not found');
+if (!runBtn) throw new Error('Element #run-btn not found');
+if (!resetBtn) throw new Error('Element #reset-btn not found');
 
-function log(message) {
-    logEl.textContent += message + '\n';
-    logEl.scrollTop = logEl.scrollHeight;
-}
+// Create a new chain with default context
+const chain = new Chain();
 
-function updateUI(result) {
-    outputEl.textContent = result !== null ? String(result) : 'cancelled / error';
-}
-
-function reset() {
-    chain = new Chain();
-    outputEl.textContent = '—';
-    logEl.textContent = 'Ready';
-}
-
-chain.on('run', () => log('▶️ run'));
-chain.on('complete', details => {
-    log('✅ complete (result: ' + details.chain.returnValue + ')');
-    updateUI(details.chain.returnValue);
+// --- Event listeners ---
+chain.on('run', () => {
+    logEl.textContent += 'run\n';
 });
+
+chain.on('complete', () => {
+    logEl.textContent += 'complete\n';
+});
+
 chain.on('cancel', () => {
-    log('❌ cancel');
-    updateUI(null);
+    logEl.textContent += 'cancel\n';
 });
-chain.on('error', details => {
-    log('⚠️ error: ' + details.error.message);
-    updateUI(null);
-});
-chain.on('fail', () => log('💥 fail'));
 
+chain.on('error', details => {
+    logEl.textContent += `error: ${details.error?.message}\n`;
+});
+
+// --- Tasks with sleep to demonstrate async behavior ---
 chain
-    .add(async (prev, c) => {
-        log('  task 0: start');
-        await c.sleep(300);
-        log('  task 0: done');
-        return 0;
+    .add(async (prev, ctrl) => {
+        logEl.textContent += 'task 0: start\n';
+        await ctrl.sleep(1000); // simulate async work
+        logEl.textContent += 'task 0: done, returning 1\n';
+        return 1;
     })
-    .add(async (prev, c) => {
-        log('  task 1: prev = ' + prev);
-        await c.sleep(200);
+    .add(async (prev, ctrl) => {
+        logEl.textContent += `task 1: start (prev=${prev})\n`;
+        await ctrl.sleep(1000);
+        logEl.textContent += `task 1: done, returning ${prev + 1}\n`;
         return prev + 1;
     })
-    .add(async (prev, c) => {
-        log('  task 2: prev = ' + prev);
+    .add(async (prev, ctrl) => {
+        logEl.textContent += `task 2: start (prev=${prev})\n`;
+        await ctrl.sleep(1000);
+        logEl.textContent += `task 2: done, returning ${prev + 1}\n`;
         return prev + 1;
     });
 
+// --- Button handlers ---
 runBtn.addEventListener('click', async () => {
-    // Cancel any previous run
-    await chain.cancel();
-    log('=== New run ===');
-    chain.run().catch(() => {});
+    outputEl.textContent = '…';
+    logEl.textContent = 'Starting...\n';
+
+    try {
+        const result = await chain.run();
+        outputEl.textContent = String(result);
+    } catch (err) {
+        if (err instanceof AlreadyRunningError) {
+            logEl.textContent += 'Already running\n';
+            outputEl.textContent = 'Already running';
+        } else {
+            logEl.textContent += `Unexpected error: ${err.message}\n`;
+            outputEl.textContent = 'Error';
+        }
+    }
 });
 
-resetBtn.addEventListener('click', reset);
+resetBtn.addEventListener('click', () => {
+    outputEl.textContent = '—';
+    logEl.textContent = 'Ready\n'; // ← теперь с переводом строки
+    // Cancel the chain if it's running
+    chain.cancel().catch(() => {});
+});

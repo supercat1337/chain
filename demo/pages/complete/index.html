@@ -13,7 +13,7 @@
                 font-family: monospace;
                 min-height: 3rem;
             }
-            #log {
+            .log {
                 background: #0f172a;
                 color: #e2e8f0;
                 padding: 0.75rem;
@@ -28,11 +28,12 @@
     </head>
     <body>
         <div class="container">
-            <h2>Complete</h2>
-            <p>Chain completes early via <code>chainController.complete()</code>.</p>
+            <h2>Complete Early</h2>
+            <p>Chain completes early with a custom value via <code>complete()</code>.</p>
 
             <section>
                 <button id="run-btn">Run Chain</button>
+                <button id="reset-btn" class="secondary">Reset</button>
             </section>
 
             <section>

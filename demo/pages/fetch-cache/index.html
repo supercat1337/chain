@@ -3,49 +3,58 @@
     <head>
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <title>Fetch &amp; Cache – Chain Demo</title>
+        <title>Fetch + Cache – Chain Demo</title>
         <link rel="stylesheet" href="../../styles/demo.css" />
         <style>
             #output {
                 background: #f1f5f9;
                 padding: 0.75rem;
                 border-radius: 0.5rem;
-                min-height: 3rem;
                 font-family: monospace;
+                min-height: 3rem;
+                max-height: 300px;
+                overflow: auto;
                 white-space: pre-wrap;
-                word-break: break-all;
             }
-            #status {
-                font-weight: 500;
-            }
-            #error {
-                color: #dc2626;
-                margin-top: 0.5rem;
-            }
-            input {
-                max-width: 300px;
+            .log {
+                background: #0f172a;
+                color: #e2e8f0;
+                padding: 0.75rem;
+                border-radius: 0.5rem;
+                font-family: monospace;
+                font-size: 0.875rem;
+                max-height: 200px;
+                overflow-y: auto;
+                white-space: pre-wrap;
             }
         </style>
     </head>
     <body>
         <div class="container">
-            <h2>Fetch &amp; Cache</h2>
-            <p>
-                Enter a comment ID (1–21) to fetch from <code>jsonplaceholder.org</code>. Results
-                are cached.
-            </p>
+            <h2>Fetch + Cache</h2>
+            <p>Enter a post ID (1–100) to fetch and cache the result.</p>
 
             <section>
-                <label for="input">Comment ID:</label>
-                <input type="number" id="input" min="1" max="21" placeholder="e.g. 5" />
-                <button id="fetch-btn">Fetch</button>
-                <button id="clear-cache-btn" class="secondary">Clear Cache</button>
+                <div>
+                    <label
+                        >Post ID: <input type="number" id="input" min="1" max="100" value="1"
+                    /></label>
+                    <button id="fetch-btn">Fetch</button>
+                    <button id="cancel-btn" class="danger">Cancel</button>
+                    <button id="reset-btn" class="secondary">Reset</button>
+                </div>
+                <div><strong>Status:</strong> <span id="status">Idle</span></div>
+                <div><strong>Cache hits:</strong> <span id="cache-hits">0</span></div>
             </section>
 
             <section>
-                <div id="status">—</div>
-                <div id="error"></div>
-                <div id="output"></div>
+                <h3>Response</h3>
+                <div id="output">—</div>
+            </section>
+
+            <section>
+                <h3>Log</h3>
+                <div id="log" class="log">Ready</div>
             </section>
 
             <p><a href="../../index.html">← Back</a></p>

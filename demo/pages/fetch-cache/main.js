@@ -1,12 +1,23 @@
 // @ts-check
-import { Chain } from '@supercat1337/chain';
+import { Chain, AlreadyRunningError } from '@supercat1337/chain';
 
 const inputEl = document.getElementById('input');
 const fetchBtn = document.getElementById('fetch-btn');
-const clearCacheBtn = document.getElementById('clear-cache-btn');
+const cancelBtn = document.getElementById('cancel-btn');
+const resetBtn = document.getElementById('reset-btn');
 const statusEl = document.getElementById('status');
-const errorEl = document.getElementById('error');
 const outputEl = document.getElementById('output');
+const logEl = document.getElementById('log');
+const cacheHitsEl = document.getElementById('cache-hits');
+
+if (!inputEl) throw new Error('Element #input not found');
+if (!fetchBtn) throw new Error('Element #fetch-btn not found');
+if (!cancelBtn) throw new Error('Element #cancel-btn not found');
+if (!resetBtn) throw new Error('Element #reset-btn not found');
+if (!statusEl) throw new Error('Element #status not found');
+if (!outputEl) throw new Error('Element #output not found');
+if (!logEl) throw new Error('Element #log not found');
+if (!cacheHitsEl) throw new Error('Element #cache-hits not found');
 
 /** @type {Map<string, string>} */
 const cache = new Map();
@@ -14,84 +25,80 @@ const cache = new Map();
 /** @type {Chain<string, typeof cache>} */
 const chain = new Chain(cache);
 
-function setStatus(text) {
-    statusEl.textContent = text;
-}
-
-function setError(text) {
-    errorEl.textContent = text;
-}
-
-function setOutput(text) {
-    outputEl.textContent = text;
-}
-
 chain.on('run', () => {
-    setStatus('🔄 Running...');
-    setError('');
-    setOutput('');
+    statusEl.textContent = 'Running...';
+    logEl.textContent += 'run\n';
 });
-
-chain.on('complete', details => {
-    setStatus('✅ Loaded');
-    setOutput(details.chain.returnValue);
+chain.on('complete', () => {
+    statusEl.textContent = 'Completed';
+    logEl.textContent += 'complete\n';
+    outputEl.textContent = chain.returnValue;
 });
-
 chain.on('cancel', () => {
-    setStatus('⏹️ Cancelled');
+    statusEl.textContent = 'Cancelled';
+    logEl.textContent += 'cancel\n';
 });
-
 chain.on('error', details => {
-    setStatus('❌ Error');
-    setError(String(details.error.message));
+    statusEl.textContent = 'Error';
+    logEl.textContent += `error: ${details.error?.message ?? 'Unknown error'}\n`;
+    outputEl.textContent = `Error: ${details.error?.message ?? 'Unknown error'}`;
 });
 
 chain
-    .add(async (previousResult, c) => {
-        const id = inputEl.value.trim();
-        if (!id) throw new Error('Empty input');
-        if (!/^\d+$/.test(id)) throw new Error('Not a number');
-        const num = Number(id);
-        if (num < 1 || num > 21) throw new Error('ID out of range (1–21)');
-
-        // Debounce: sleep 500ms to avoid rapid requests
-        await c.sleep(500);
-
-        return id;
-    })
-    .add(async (id, c) => {
-        // Check cache
-        if (c.ctx.has(id)) {
-            c.complete(c.ctx.get(id));
+    .add(async (prev, ctrl) => {
+        const id = inputEl.value;
+        if (!id || id < 1 || id > 100) {
+            throw new Error('Invalid post ID (1–100)');
         }
+        logEl.textContent += `task 0: validating ID ${id}\n`;
         return id;
     })
-    .add(async (id, c) => {
-        // Fetch
-        const url = 'https://jsonplaceholder.org/comments?id=' + id;
-        setStatus('⏳ Loading...');
-        const response = await c.fetch(url);
-        if (!response.ok) throw new Error('HTTP ' + response.status);
+    .add(async (id, ctrl) => {
+        if (ctrl.ctx.has(id)) {
+            logEl.textContent += `task 1: cache hit for ${id}, completing with cached value\n`;
+            ctrl.complete(ctrl.ctx.get(id));
+        }
+        logEl.textContent += `task 1: cache miss, proceeding to fetch\n`;
+        return id;
+    })
+    .add(async (id, ctrl) => {
+        logEl.textContent += `task 2: fetching post ${id}\n`;
+        const url = `https://jsonplaceholder.typicode.com/posts/${id}`;
+        const response = await ctrl.fetch(url);
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
         const text = await response.text();
-        // Store in cache
-        c.ctx.set(id, text);
-        c.complete(text);
+        ctrl.ctx.set(id, text);
+        cacheHitsEl.textContent = String(ctrl.ctx.size);
+        logEl.textContent += `task 2: fetched and cached\n`;
+        ctrl.complete(text);
     });
 
-async function fetchComment() {
-    await chain.cancel();
-    chain.run().catch(() => {});
-}
-
-fetchBtn.addEventListener('click', fetchComment);
-
-inputEl.addEventListener('keydown', e => {
-    if (e.key === 'Enter') fetchComment();
+fetchBtn.addEventListener('click', async () => {
+    outputEl.textContent = '…';
+    statusEl.textContent = 'Starting...';
+    logEl.textContent = 'Starting...\n';
+    try {
+        await chain.run();
+    } catch (err) {
+        if (err instanceof AlreadyRunningError) {
+            logEl.textContent += 'Already running\n';
+            statusEl.textContent = 'Already running';
+        } else {
+            // Other errors are handled by the 'error' event
+        }
+    }
 });
 
-clearCacheBtn.addEventListener('click', () => {
+cancelBtn.addEventListener('click', () => {
+    chain.cancel().catch(() => {});
+    logEl.textContent += 'Cancel requested\n';
+});
+
+resetBtn.addEventListener('click', () => {
+    outputEl.textContent = '—';
+    statusEl.textContent = 'Idle';
+    logEl.textContent = 'Ready\n';
     cache.clear();
-    setStatus('🗑️ Cache cleared');
-    setOutput('');
-    setError('');
+    cacheHitsEl.textContent = '0';
+    chain.cancel().catch(() => {});
 });

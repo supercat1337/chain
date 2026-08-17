@@ -1,103 +1,71 @@
 // @ts-check
-import { Chain } from '@supercat1337/chain';
+import { Chain, AlreadyRunningError } from '@supercat1337/chain';
 
-const statusEl = document.getElementById('status');
+const outputEl = document.getElementById('output');
 const logEl = document.getElementById('log');
-const startBtn = document.getElementById('start-btn');
+const runBtn = document.getElementById('run-btn');
 const cancelBtn = document.getElementById('cancel-btn');
+const resetBtn = document.getElementById('reset-btn');
 
-/** @type {Chain<number>} */
-let chain = new Chain();
+if (!outputEl) throw new Error('Element #output not found');
+if (!logEl) throw new Error('Element #log not found');
+if (!runBtn) throw new Error('Element #run-btn not found');
+if (!cancelBtn) throw new Error('Element #cancel-btn not found');
+if (!resetBtn) throw new Error('Element #reset-btn not found');
 
-function log(message) {
-    logEl.textContent += message + '\n';
-    logEl.scrollTop = logEl.scrollHeight;
-}
+const chain = new Chain();
 
-function setStatus(text) {
-    statusEl.textContent = text;
-}
-
-chain.on('run', () => {
-    setStatus('▶️ Running');
-    log('🟢 run');
-});
-chain.on('complete', () => {
-    setStatus('✅ Complete');
-    log('✅ complete');
-});
-chain.on('cancel', () => {
-    setStatus('⏹️ Cancelled');
-    log('❌ cancel');
-});
+chain.on('run', () => (logEl.textContent += 'run\n'));
+chain.on('complete', () => (logEl.textContent += 'complete\n'));
+chain.on('cancel', () => (logEl.textContent += 'cancel\n'));
 chain.on('error', details => {
-    setStatus('❌ Error: ' + details.error.message);
-    log('⚠️ error: ' + details.error.message);
+    logEl.textContent += `error: ${details.error?.message ?? 'Unknown error'}\n`;
 });
-chain.on('fail', () => log('💥 fail'));
 
 chain
-    .add(async (prev, c) => {
-        log('  task 0: start');
-        await c.sleep(500);
-        log('  task 0: done');
-        return 0;
-    })
-    .add(async (prev, c) => {
-        log('  task 1: start (long sleep)');
-        await c.sleep(10000);
-        log('  task 1: done');
+    .add(async (prev, ctrl) => {
+        logEl.textContent += 'task 0: start\n';
+        await ctrl.sleep(1000);
+        logEl.textContent += 'task 0: done, returning 1\n';
         return 1;
     })
-    .add(async (prev, c) => {
-        log('  task 2: start');
+    .add(async (prev, ctrl) => {
+        logEl.textContent += `task 1: start (prev=${prev})\n`;
+        await ctrl.sleep(3000);
+        logEl.textContent += 'task 1: done, returning 2\n';
         return 2;
+    })
+    .add(async (prev, ctrl) => {
+        logEl.textContent += `task 2: start (prev=${prev})\n`;
+        await ctrl.sleep(1000);
+        logEl.textContent += 'task 2: done, returning 3\n';
+        return 3;
     });
 
-startBtn.addEventListener('click', async () => {
-    await chain.cancel();
-    log('=== New run ===');
-    chain = new Chain(); // fresh chain to reset state
-    // Re‑attach listeners
-    chain.on('run', () => {
-        setStatus('▶️ Running');
-        log('🟢 run');
-    });
-    chain.on('complete', () => {
-        setStatus('✅ Complete');
-        log('✅ complete');
-    });
-    chain.on('cancel', () => {
-        setStatus('⏹️ Cancelled');
-        log('❌ cancel');
-    });
-    chain.on('error', details => {
-        setStatus('❌ Error: ' + details.error.message);
-        log('⚠️ error: ' + details.error.message);
-    });
-    chain.on('fail', () => log('💥 fail'));
-    // Re‑add tasks
-    chain
-        .add(async (prev, c) => {
-            log('  task 0: start');
-            await c.sleep(500);
-            log('  task 0: done');
-            return 0;
-        })
-        .add(async (prev, c) => {
-            log('  task 1: start (long sleep)');
-            await c.sleep(10000);
-            log('  task 1: done');
-            return 1;
-        })
-        .add(async (prev, c) => {
-            log('  task 2: start');
-            return 2;
-        });
-    chain.run().catch(() => {});
+runBtn.addEventListener('click', async () => {
+    outputEl.textContent = '…';
+    logEl.textContent = 'Starting...\n';
+    try {
+        const result = await chain.run();
+        outputEl.textContent = String(result);
+    } catch (err) {
+        if (err instanceof AlreadyRunningError) {
+            logEl.textContent += 'Already running\n';
+            outputEl.textContent = 'Already running';
+        } else {
+            logEl.textContent += `Unexpected error: ${err.message}\n`;
+            outputEl.textContent = 'Error';
+        }
+    }
 });
 
-cancelBtn.addEventListener('click', async () => {
-    log('⏹️ manual cancel requested');
-    await chain.cancel();
+cancelBtn.addEventListener('click', () => {
+    chain.cancel().catch(() => {});
+    logEl.textContent += 'Cancel requested\n';
+});
+
+resetBtn.addEventListener('click', () => {
+    outputEl.textContent = '—';
+    logEl.textContent = 'Ready\n';
+    chain.cancel().catch(() => {});
 });
